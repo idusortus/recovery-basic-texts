@@ -1,0 +1,32 @@
+[
+  {
+    "id": "twelve-steps-traditions",
+    "title": "Twelve Steps and Twelve Traditions",
+    "shortTitle": "12&12",
+    "description": "Bill W.'s 1953 essays expanding on the Twelve Steps and Twelve Traditions. Copyright confirmed for public use.",
+    "copyright": "public-domain",
+    "displayMode": "full-text",
+    "contextWords": 12,
+    "linkTemplate": null,
+    "officialUrl": "https://www.aa.org/twelve-steps-twelve-traditions",
+    "freeUrl": "https://www.portlandeyeopener.com/AA-12-Steps-12-Traditions.pdf",
+    "color": "#c8902a",
+    "sortOrder": 4,
+    "enabled": true
+  },
+  {
+    "id": "big-book-2ed",
+    "title": "Alcoholics Anonymous (2nd Edition)",
+    "shortTitle": "Big Book",
+    "description": "The 1955 second edition of Alcoholics Anonymous. Public domain in the United States.",
+    "copyright": "public-domain",
+    "displayMode": "full-text",
+    "contextWords": 15,
+    "linkTemplate": null,
+    "officialUrl": "https://www.aa.org/alcoholics-anonymous",
+    "freeUrl": "https://anonpress.org/bb/",
+    "color": "#2c4a6e",
+    "sortOrder": 1,
+    "enabled": true
+  }
+]

@@ -182,13 +182,35 @@ def check_deps() -> int:
 
 
 def _extract_pymupdf(pdf_path: Path) -> Optional[List[Tuple[int, str]]]:
+    """
+    Extract per-page text using pymupdf's 'blocks' mode.
+
+    Each block in the PDF corresponds roughly to one paragraph or heading.
+    We join intra-block line breaks into spaces, then separate blocks with a
+    double newline so the downstream paragraph splitter can find boundaries.
+    """
     try:
         import fitz  # type: ignore
     except ImportError:
         return None
     try:
         doc = fitz.open(str(pdf_path))
-        pages = [(i + 1, page.get_text("text")) for i, page in enumerate(doc)]
+        pages = []
+        for i, page in enumerate(doc):
+            block_texts = []
+            for block in page.get_text("blocks"):
+                # block: (x0, y0, x1, y1, text, block_no, block_type)
+                # block_type 0 = text, 1 = image — skip images
+                if block[6] != 0:
+                    continue
+                raw_block = block[4]
+                # Collapse intra-block line-breaks into spaces (they are layout
+                # artefacts, not semantic paragraph breaks).
+                joined = " ".join(ln.strip() for ln in raw_block.split("\n") if ln.strip())
+                if joined:
+                    block_texts.append(joined)
+            # Blocks are paragraph-level; separate them with a blank line
+            pages.append((i + 1, "\n\n".join(block_texts)))
         doc.close()
         return pages
     except Exception as exc:
@@ -282,18 +304,31 @@ def is_chapter_heading(text: str) -> bool:
     stripped = text.strip()
     if not stripped:
         return False
+    # Reject long internal whitespace → TOC entries ("Foreword       xv")
+    # or running headers with page numbers ("xii    PREFACE").
+    if re.search(r'\s{4,}', stripped):
+        return False
+    # Reject spaced-out individual letters → typographic running headers
+    # ("S T E P  T W O", "C O N T E N T S", "F O R E W O R D").
+    # Requires 4+ consecutive single letters each separated by a space so that
+    # normal phrases like "THERE IS A SOLUTION" (which contain isolated single-
+    # letter words "I" / "A") are not incorrectly suppressed.
+    if re.search(r'[A-Z] [A-Z] [A-Z] [A-Z]', stripped):
+        return False
     words = stripped.split()
     if not (1 <= len(words) <= 10):
         return False
     for pattern in _CHAPTER_PATTERNS:
         if pattern.match(stripped):
             return True
-    # All-caps heuristic: short line, not a page number or all-digit
+    # All-caps heuristic: short line that contains at least one letter,
+    # not a bare page number or standalone Roman numeral.
     if (
         stripped == stripped.upper()
+        and re.search(r'[A-Z]', stripped)
         and len(stripped) >= 3
         and not stripped.isdigit()
-        and not re.fullmatch(r"[IVXLCDM]+", stripped)  # skip Roman numerals alone
+        and not re.fullmatch(r'[IVXLCDM\s]+', stripped, re.IGNORECASE)
     ):
         return True
     return False
@@ -342,12 +377,15 @@ def structure_passages(
     like chapter headings are consumed as metadata rather than passages.
     """
 
-    # Build flat list of (page_num, line) pairs across all pages
+    # Build flat list of (page_num, line) pairs across all pages.
+    # Insert an explicit blank line at each page boundary so that the last
+    # block of page N never merges with the first block of page N+1.
     annotated: List[Tuple[int, str]] = []
     for page_num, raw in pages:
         cleaned = clean_page_text(raw, repeated_lines)
         for line in cleaned.split("\n"):
             annotated.append((page_num, line))
+        annotated.append((page_num, ""))  # page-boundary separator
 
     # Group consecutive non-blank lines into paragraph blocks
     para_blocks: List[Tuple[int, str]] = []  # (first_page_num, joined_text)
