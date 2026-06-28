@@ -56,6 +56,9 @@
 	});
 
 	import { indexVersionStore } from '$lib/stores/version';
+	import { initInstallPrompt } from '$lib/stores/install';
+	import { online } from '$lib/stores/online';
+	import { flushLog } from '$lib/log';
 
 	$effect(() => {
 		if ($indexVersionStore.updateAvailable) {
@@ -65,6 +68,15 @@
 				10000
 			);
 		}
+	});
+
+	// Flush queued log records whenever connectivity is restored
+	$effect(() => {
+		if ($online) flushLog();
+	});
+
+	onMount(() => {
+		initInstallPrompt();
 	});
 </script>
 
