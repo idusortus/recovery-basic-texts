@@ -7,12 +7,6 @@
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
 
-  // Build-time env var: tells pnpm to skip the 24-hour minimum-release-age
-  // gate so freshly-published lockfile entries don't block CI builds.
-  "vars": {
-    "NPM_CONFIG_MINIMUM_RELEASE_AGE": "0"
-  },
-
   // KV binding for anonymous search logging (/api/log → functions/api/log.ts)
   // Namespace: "recovery-basic-texts" — ID from: wrangler kv namespace list
   "kv_namespaces": [

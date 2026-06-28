@@ -2,3 +2,9 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+
+# Supply-chain hardening: only resolve dependency versions that have been
+# published for at least this many minutes (1440 = 24h). This mirrors the
+# minimum-release-age gate that Cloudflare Workers/Pages builds enforce, so the
+# committed lockfile always satisfies that gate instead of trying to disable it.
+minimumReleaseAge: 1440
