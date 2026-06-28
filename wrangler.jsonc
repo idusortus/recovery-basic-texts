@@ -1,0 +1,18 @@
+{
+  // Cloudflare Pages project config
+  // Used by: wrangler pages dev (local), wrangler pages deploy (manual CI)
+  // GitHub auto-deploy: connect repo in Cloudflare dashboard → Pages → basictexts → Settings → Git
+  "name": "basictexts",
+  "pages_build_output_dir": ".svelte-kit/cloudflare",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // KV binding for anonymous search logging (/api/log → functions/api/log.ts)
+  // Namespace: "recovery-basic-texts" — ID from: wrangler kv namespace list
+  "kv_namespaces": [
+    {
+      "binding": "SEARCH_LOG",
+      "id": "6ce8f70fddab4a9eabc38e4bd751140b"
+    }
+  ]
+}
