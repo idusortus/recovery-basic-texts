@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ────────────────────────────────────────────── */
+:root {
+	--color-bg: #f8f7f4;
+	--color-text: #1a1a1a;
+	--color-navy: #2c4a6e;
+	--color-gold: #c8902a;
+	--color-highlight-bg: #fff4dc;
+	--color-highlight-border: rgba(200, 144, 42, 0.3);
+	--color-card: #ffffff;
+	--font-serif: 'Lora', Georgia, Cambria, serif;
+	--font-sans: 'Inter', system-ui, sans-serif;
+}
+
+.dark {
+	--color-bg: #0f1923;
+	--color-text: #e8e6e1;
+	--color-card: rgba(15, 25, 40, 0.4);
+}
+
+/* ─── Text selection ───────────────────────────────────────────── */
+::selection {
+	background: var(--color-highlight-bg);
+	color: var(--color-gold);
+}
+
+/* ─── KWIC highlight (mark element) ───────────────────────────── */
+mark {
+	background: var(--color-highlight-bg);
+	color: var(--color-gold);
+	border-bottom: 1px solid var(--color-highlight-border);
+	border-radius: 2px;
+	padding: 0 1px;
+}
+
+.dark mark {
+	background: rgba(120, 53, 15, 0.4); /* amber-950/40 */
+	color: #fbbf24; /* amber-400 */
+	border-bottom-color: rgba(251, 191, 36, 0.3);
+}
+
+/* ─── Screen-reader only ───────────────────────────────────────── */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* ─── Focus visible ────────────────────────────────────────────── */
+:focus-visible {
+	outline: 2px solid var(--color-navy);
+	outline-offset: 2px;
+}
+
+.dark :focus-visible {
+	outline-color: #fbbf24; /* amber-400 */
+}
+
+/* ─── Prose / content typography ──────────────────────────────── */
+body {
+	font-family: var(--font-sans);
+	font-size: 1rem;
+	line-height: 1.6;
+}
