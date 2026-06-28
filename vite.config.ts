@@ -3,6 +3,14 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	server: {
+		fs: {
+			// Allow Vite to serve files from the repo root so that
+			// corpus/sources.json (imported by src/lib/corpus/registry.ts)
+			// is reachable during dev. The build is unaffected.
+			allow: ['.']
+		}
+	},
 	plugins: [
 		sveltekit(),
 		SvelteKitPWA({
