@@ -5,14 +5,14 @@ Getting basictexts.org running locally takes about 2 minutes.
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v18 or later (v20+ recommended)
-- npm v9+
+- [pnpm](https://pnpm.io/) v9+ (`npm install -g pnpm` if not already installed)
 
 ## Clone and install
 
 ```bash
 git clone https://github.com/idusortus/recovery-basic-texts.git
 cd recovery-basic-texts
-npm install
+pnpm install
 ```
 
 ## Build the search index
@@ -21,7 +21,7 @@ The search index is a prebuilt static asset generated from the corpus files.
 It is not checked into the repository (it's in `.gitignore`), so you must build it before running the app:
 
 ```bash
-npm run build:index
+pnpm run build:index
 ```
 
 This reads `corpus/sources.json` and all `corpus/sources/*.json` files and emits:
@@ -32,7 +32,7 @@ This reads `corpus/sources.json` and all `corpus/sources/*.json` files and emits
 ## Start the dev server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173).
@@ -51,7 +51,7 @@ Checks all enabled corpus files for schema correctness and referential integrity
 ## Full production build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 This runs `build:index` followed by `vite build` using the Cloudflare Pages adapter.
@@ -60,7 +60,7 @@ Output goes to `.svelte-kit/cloudflare/`.
 ## TypeScript / Svelte check
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 ## Project structure
@@ -112,7 +112,7 @@ static/
 
 1. Add a corpus file to `corpus/sources/<source-id>.json` per the schema in `corpus/CORPUS-GUIDE.md`
 2. Add a registry entry to `corpus/sources.json`
-3. Run `npm run build:index`
+3. Run `pnpm run build:index`
 4. No application code changes required
 
 See [corpus/CORPUS-GUIDE.md](corpus/CORPUS-GUIDE.md) for full instructions, copyright evaluation criteria, and ID conventions.
@@ -123,8 +123,9 @@ The app targets Cloudflare Pages with the `@sveltejs/adapter-cloudflare` adapter
 
 1. Push to the GitHub repo
 2. Connect the repo to Cloudflare Pages:
-   - Build command: `npm run build`
+   - Build command: `pnpm run build`
    - Build output directory: `.svelte-kit/cloudflare`
+   - Environment variable: `NODE_VERSION` = `20`
 3. Add a custom domain in Pages → Custom domains
 
 See the [Implementation Plan](docs/plans/basic-texts-implementation-plan.md) §0 for the full manual setup checklist.

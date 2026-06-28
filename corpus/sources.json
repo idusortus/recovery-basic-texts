@@ -2,8 +2,8 @@
   {
     "id": "big-book-1ed",
     "title": "Alcoholics Anonymous (1st Edition)",
-    "shortTitle": "Big Book",
-    "description": "The 1939 first edition of Alcoholics Anonymous. Public domain in the United States — AAWS did not renew the copyright.",
+    "shortTitle": "Big Book (1st Ed.)",
+    "description": "The 1939 first edition of Alcoholics Anonymous. Public domain in the United States \u2014 AAWS did not renew the copyright.",
     "copyright": "public-domain",
     "displayMode": "full-text",
     "contextWords": 15,
@@ -15,10 +15,25 @@
     "enabled": true
   },
   {
+    "id": "big-book-2ed",
+    "title": "Alcoholics Anonymous (2nd Edition)",
+    "shortTitle": "Big Book (2nd Ed.)",
+    "description": "The 1955 second edition of Alcoholics Anonymous. Public domain in the United States \u2014 copyright lapsed 1983 (not renewed).",
+    "copyright": "public-domain",
+    "displayMode": "full-text",
+    "contextWords": 15,
+    "linkTemplate": null,
+    "officialUrl": "https://www.aa.org/alcoholics-anonymous",
+    "freeUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf",
+    "color": "#1A5276",
+    "sortOrder": 2,
+    "enabled": true
+  },
+  {
     "id": "twelve-steps-traditions",
     "title": "Twelve Steps and Twelve Traditions",
     "shortTitle": "12&12",
-    "description": "Bill W.'s 1953 essays expanding on the Twelve Steps and Twelve Traditions. Copyright status pending verification — showing short excerpts only.",
+    "description": "Bill W.'s 1953 essays expanding on the Twelve Steps and Twelve Traditions. Copyright status pending verification \u2014 showing short excerpts only.",
     "copyright": "unknown",
     "displayMode": "snippet",
     "contextWords": 30,
@@ -26,7 +41,7 @@
     "officialUrl": "https://www.aa.org/twelve-steps-twelve-traditions",
     "freeUrl": null,
     "color": "#7C5C3A",
-    "sortOrder": 2,
+    "sortOrder": 3,
     "enabled": true
   },
   {
@@ -41,14 +56,14 @@
     "officialUrl": "https://www.aa.org/twelve-traditions",
     "freeUrl": null,
     "color": "#4A7C6E",
-    "sortOrder": 3,
+    "sortOrder": 4,
     "enabled": false
   },
   {
     "id": "daily-reflections",
     "title": "Daily Reflections",
     "shortTitle": "DR",
-    "description": "Daily Reflections: A Book of Reflections by A.A. Members for A.A. Members. © Alcoholics Anonymous World Services, Inc. Concordance-only excerpts.",
+    "description": "Daily Reflections: A Book of Reflections by A.A. Members for A.A. Members. \u00a9 Alcoholics Anonymous World Services, Inc. Concordance-only excerpts.",
     "copyright": "protected",
     "displayMode": "concordance-only",
     "contextWords": 8,
@@ -56,7 +71,7 @@
     "officialUrl": "https://www.aa.org/daily-reflections",
     "freeUrl": null,
     "color": "#C8902A",
-    "sortOrder": 4,
+    "sortOrder": 5,
     "enabled": true
   }
 ]

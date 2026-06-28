@@ -13,7 +13,7 @@ Every source in basictexts.org consists of two things:
 
 > **Repo structure (confirmed):** The `corpus/` directory exists at the repository root alongside this guide. The `corpus/sources/` subdirectory should be created when adding the first corpus file. Sample JSON showing the correct schema is available in `proto/google-oneshot/public/corpus/` — those are prototype files, not authoritative data.
 
-The build script (`npm run build:index`) reads both and compiles the passages into a **prebuilt static `minisearch` index** under the app's `static/index/` directory. The index is a **derived artifact** — it can always be rebuilt from scratch by re-running the build against the corpus files. The corpus files in the repository are the source of truth. (There is no database in v1; see PRD §7.)
+The build script (`pnpm run build:index`) reads both and compiles the passages into a **prebuilt static `minisearch` index** under the app's `static/index/` directory. The index is a **derived artifact** — it can always be rebuilt from scratch by re-running the build against the corpus files. The corpus files in the repository are the source of truth. (There is no database in v1; see PRD §7.)
 
 The display mode in the registry entry controls what users see:
 
@@ -284,7 +284,7 @@ Checks to perform:
 - [ ] For DR entries: all 366 dates present (Jan 1 – Dec 31 + Feb 29), no duplicates
 - [ ] Spot-check 20 random passages against the source text for accuracy
 
-A validation script should be committed to `/corpus/scripts/validate.js` and run as part of `npm run build:index`.
+A validation script should be committed to `/corpus/scripts/validate.js` and run as part of `pnpm run build:index`.
 
 ### Step 6 — Update the source registry
 
@@ -320,10 +320,10 @@ Add the new source entry to `/corpus/sources.json`. All fields are required:
 
 ```bash
 # Validate all corpus files
-npm run validate
+node corpus/scripts/validate.js
 
 # Build the prebuilt minisearch index from all corpus files
-npm run build:index
+pnpm run build:index
 ```
 
 The build script should:
@@ -333,12 +333,12 @@ The build script should:
 4. Emit `static/index/minisearch.json`, `static/index/passages.json`, and `static/index/index-meta.json` (with a content-hash `version`)
 5. Report passage count per source on completion
 
-The build runs automatically as part of the app's `npm run build` (Cloudflare Pages deploy), so a `git push` to `main` regenerates the index from the corpus files.
+The build runs automatically as part of the app's `pnpm run build` (Cloudflare Pages deploy), so a `git push` to `main` regenerates the index from the corpus files.
 
 ### Step 8 — Verify in the app
 
 After ingesting:
-1. Run the app locally (`npm run dev`)
+1. Run the app locally (`pnpm run dev`)
 2. Search for 3–5 known passages from the new source
 3. Verify: correct source label, correct chapter/page reference, correct display mode (full text vs. KWIC only), correct external link
 4. Test the offline path: run the ingest, build the PWA, go offline in DevTools, search again
@@ -411,9 +411,9 @@ These are candidates for v2+. Each needs its own copyright research.
 | Stanford Copyright Renewal DB | Searchable 1923–1963 renewal records | https://exhibits.stanford.edu/copyrightrenewals |
 | Internet Archive | Source texts, scans, plain text downloads | https://archive.org |
 | pdftotext (poppler) | Extract text from PDF | `brew install poppler` |
-| pdf-parse | Node.js PDF text extraction | `npm install pdf-parse` |
+| pdf-parse | Node.js PDF text extraction | `pnpm add pdf-parse` |
 | Tesseract | OCR for scanned PDFs | https://tesseract-ocr.github.io |
-| htm (Node) | Lightweight HTML parser for scraping | `npm install node-html-parser` |
+| htm (Node) | Lightweight HTML parser for scraping | `pnpm add node-html-parser` |
 | minisearch | Client-side FTS for offline index | https://lucaong.github.io/minisearch |
 
 ## Appendix B — Directory Structure

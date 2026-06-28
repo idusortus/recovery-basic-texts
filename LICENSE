@@ -1,0 +1,32 @@
+MIT License
+
+Copyright (c) 2024 basictexts contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Note on corpus content:
+The application code in this repository is MIT-licensed. The corpus data files
+under corpus/sources/ have their own copyright status documented in
+corpus/CORPUS-GUIDE.md. Public-domain texts (e.g. the 1st Edition Big Book)
+are included directly; protected texts are indexed for search purposes only
+and are never rendered or reproduced in full (see PRD §8.4 for the display-mode
+copyright posture). This project is not affiliated with or endorsed by
+Alcoholics Anonymous World Services, Inc.

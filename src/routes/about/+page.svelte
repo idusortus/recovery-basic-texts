@@ -124,6 +124,12 @@
 			>
 				View on GitHub →
 			</ExternalLink>
+			<ExternalLink
+				href="https://github.com/idusortus/recovery-basic-texts/issues/new?template=suggestion.md&title=%5BSuggestion%5D+"
+				class="inline-block mt-2 ml-4 text-sm text-navy dark:text-amber-400 hover:underline font-medium"
+			>
+				Suggest a change or correction →
+			</ExternalLink>
 		</section>
 
 		<!-- How to contribute -->

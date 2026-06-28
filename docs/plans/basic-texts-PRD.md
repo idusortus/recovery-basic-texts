@@ -10,7 +10,7 @@
 
 ---
 
-## 1. Purpose & Vision
+## 1. Purpose & Vision d
 
 basictexts.org is a free, open-source web application and installable PWA that lets anyone search Alcoholics Anonymous literature by keyword or phrase, see every occurrence across all available sources with surrounding context, and navigate directly to official or free online versions of the text.
 
@@ -176,7 +176,7 @@ If the corpus grows beyond what's reasonable to ship to the client, or user feat
 Adding a new source corpus requires:
 1. A corpus data file in `/corpus/sources/<source-id>.json`
 2. One entry added to `/corpus/sources.json` (the registry)
-3. A build script run (`npm run build:index`) to regenerate the prebuilt search index from the corpus files
+3. A build script run (`pnpm run build:index`) to regenerate the prebuilt search index from the corpus files
 4. No application code changes
 
 The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sourcing, copyright evaluation, acquisition steps, and ingestion procedures. Consult it before adding or modifying any source.
@@ -245,7 +245,7 @@ The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sour
 There is **no D1 database and no server-side search** in v1. The corpus lives entirely in the repository as JSON (§6.5) and is compiled into a static, prebuilt search index at deploy time. All search runs client-side via `minisearch`. The only server-side component is a thin logging function (§7.4).
 
 ### 7.2 Prebuilt Search Index
-A build script (`npm run build:index`) reads `/corpus/sources.json` + every `/corpus/sources/<id>.json` and emits static assets into the app's `static/index/` directory:
+A build script (`pnpm run build:index`) reads `/corpus/sources.json` + every `/corpus/sources/<id>.json` and emits static assets into the app's `static/index/` directory:
 
 - `minisearch.json` — the serialized `minisearch` index (fields indexed: `text`; stored/returned: `id`, `sourceId`). Built deterministically so output is stable across runs given the same input.
 - `passages.json` — an `id → passage` lookup containing display metadata (`title`, `sequence`, `date`, `pageRef`, `chapterRef`, `sourceId`) plus the `text` needed to compute KWIC client-side.
@@ -434,38 +434,44 @@ These are explicitly out of scope for MVP. Document them so the agent doesn't bu
 
 > The detailed, work-unit-level breakdown lives in `docs/plans/basic-texts-implementation-plan.md`. The phases below are the high-level milestones.
 
-### Phase 1 — Foundation (data + search core)
+### Phase 1 — Foundation (data + search core) ✓
 > **Design reference:** `proto/google-oneshot` is a working React/Vite prototype of the complete UI. Use it for visual design and component behavior reference as you build each SvelteKit equivalent. See §8.4 for the specific patterns to carry forward. Do not deploy it or adapt its service worker.
 
-- [ ] Scaffold SvelteKit + TypeScript + Tailwind + `@vite-pwa/sveltekit`
-- [ ] Define registry/passage/result TypeScript types (§6)
-- [ ] Load Big Book 1st Edition corpus into `/corpus/sources/`
-- [ ] `npm run build:index` prebuild script → `static/index/*` (§7.2)
-- [ ] Client-side `minisearch` search service + KWIC/highlight per `displayMode`
-- [ ] Functional search results page
+- [x] Scaffold SvelteKit + TypeScript + Tailwind + `@vite-pwa/sveltekit`
+- [x] Define registry/passage/result TypeScript types (§6)
+- [x] Load Big Book 1st Edition corpus into `/corpus/sources/`
+- [x] `pnpm run build:index` prebuild script → `static/index/*` (§7.2)
+- [x] Client-side `minisearch` search service + KWIC/highlight per `displayMode`
+- [x] Functional search results page
 
-### Phase 2 — PWA & Offline
-- [ ] `@vite-pwa/sveltekit` manifest, icons, precache (app shell + index)
-- [ ] Index versioning / cache-busting via `index-meta.json` (§7.6)
-- [ ] Online/offline detection + online-only link guards (§7.5)
+### Phase 2 — PWA & Offline ✓
+- [x] `@vite-pwa/sveltekit` manifest, icons, precache (app shell + index)
+- [x] Index versioning / cache-busting via `index-meta.json` (§7.6)
+- [x] Online/offline detection + online-only link guards (§7.5)
 - [ ] Verify install prompt on Android and iOS; verify offline search
 
-### Phase 3 — Full Corpus & UI
-- [ ] Ingest remaining v1 sources (12&12 `snippet`, Traditions, DR `concordance-only` if Q3/Q4 resolved)
-- [ ] DR home teaser card + `/reflection` route (date nav, no-substitution rule)
-- [ ] Source filter bar, topic chips, `/topics` browse
-- [ ] Apply design tokens, light/dark theme toggle
-- [ ] KWIC highlight rendering + accessibility treatment
-- [ ] Copy / Share (Web Share API) with copyright guard
-- [ ] Known-exceptions hints (§4.7)
+### Phase 3 — Full Corpus & UI ✓ (partial)
+- [x] Ingest 12&12 (`snippet`) and Daily Reflections (`concordance-only`)
+- [x] Big Book 2nd Edition ingested (746 passages, full-text, public domain confirmed) — 2026-06-28
+  - Corpus sourced from PDF; page refs corrected to book page numbers (offset -21 from PDF)
+  - "tornado" passage confirmed searchable at Into Action p.82 ✓
+- [ ] Twelve Traditions corpus — **backburnered** (registry-ready when sourced; no code changes needed)
+- [x] DR home teaser card + `/reflection` route (date nav, no-substitution rule)
+- [x] Source filter bar, topic chips, `/topics` browse
+- [x] Apply design tokens, light/dark theme toggle
+- [x] KWIC highlight rendering + accessibility treatment
+- [x] Copy / Share (Web Share API) with copyright guard
+- [x] Known-exceptions hints (§4.7)
 
-### Phase 4 — Logging, Polish & Launch
-- [ ] `/api/log` Pages Function + Cloudflare KV; IndexedDB queue + flush (§7.4)
-- [ ] `/sources` page + `/about` page (disclaimer, privacy line, Ko-fi/GitHub Sponsors reserved space)
-- [ ] Deep-link URLs for search and passage detail (`/passage/<sourceId>/<passageId>`)
-- [ ] Accessibility audit (contrast, keyboard nav, screen reader, reduced-motion)
-- [ ] README + CONTRIBUTING.md; LICENSE (MIT)
-- [ ] Connect Cloudflare Pages to GitHub; deploy to basictexts.org
+### Phase 4 — Logging, Polish & Launch (in progress)
+- [x] `/api/log` Pages Function + Cloudflare KV; IndexedDB queue + flush (§7.4)
+- [x] `/sources` page + `/about` page (disclaimer, privacy line, Ko-fi/GitHub Sponsors reserved space)
+- [x] Deep-link URLs for search and passage detail (`/passage/<sourceId>/<passageId>`)
+- [x] Accessibility — easy wins (skip nav, ARIA roles/labels, mobile dialog, mark sr-only) ✔ 2026-06-28
+- [ ] Accessibility — full audit (focus trap, Lighthouse a11y ≥95) — **backburnered**
+- [x] CONTRIBUTING.md; LICENSE (MIT)
+- [x] Connect Cloudflare Pages to GitHub ✔ 2026-06-28
+- [ ] Deploy to basictexts.org (custom domain + smoke test)
 
 ---
 
@@ -478,7 +484,7 @@ When implementing this PRD, the agent should:
 3. **The `displayMode` field is load-bearing.** Every place that renders or copies passage text must check `displayMode` and apply the correct path. Never render or copy full text for a `concordance-only` (or `snippet`) source.
 4. **No server-side search in v1.** Search is client-side `minisearch` against a prebuilt static index. The only server code is the thin `/api/log` Pages Function (usage logging only — §7.4). Do not introduce D1, a search Worker, or any `/api/search` endpoint.
 5. **Use TypeScript throughout.** Type the source registry, passage schema, search results, and log records explicitly.
-6. **Corpus files are source of truth.** The prebuilt index (`static/index/*`) is a derived artifact — always rebuildable from `/corpus/` via `npm run build:index`. Document this clearly.
+6. **Corpus files are source of truth.** The prebuilt index (`static/index/*`) is a derived artifact — always rebuildable from `/corpus/` via `pnpm run build:index`. Document this clearly.
 7. **Do not implement v2 features.** No auth, no user tables, no bookmarks, no extra daily-reading sources. If the schema tempts you to add them, resist.
 8. **Test offline before declaring PWA done.** Chrome DevTools → Network → Offline. Every search should return cached results; every online-only link should warn instead of failing.
 9. **`proto/google-oneshot` is a design reference, not deployable code.** The prototype uses React/Vite (wrong stack), has no backend, and uses a hand-rolled service worker that won't survive a production Vite build. Use it for: component interaction patterns, design token confirmation, KWIC rendering logic, and UI layout. Do not copy the service worker, search implementation, or `package.json`. Known prototype bugs to avoid replicating: Daily Reflection fallback silently substitutes the wrong date's content; copy handler copies full protected text regardless of display mode; `CMD+K` hint is displayed but not wired up.

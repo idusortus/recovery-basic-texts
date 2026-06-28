@@ -207,7 +207,7 @@
 					style={activeSourceIds.has(source.id) ? `background-color: ${source.color};` : ''}
 				>
 					<span class="inline-block w-2 h-2 rounded-full shrink-0"
-						style="background-color: {source.color};" aria-hidden="true"></span>
+					style="background-color: {activeSourceIds.has(source.id) ? 'white' : source.color};" aria-hidden="true"></span>
 					{source.shortTitle}
 				</button>
 			{/each}
@@ -222,7 +222,7 @@
 			<span class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium block mb-2">
 				Popular Recovery Searches:
 			</span>
-			<div class="flex flex-wrap gap-2 items-center" aria-label="Quick topic searches">
+			<div class="flex flex-wrap gap-2 items-center" role="group" aria-label="Quick topic searches">
 				{#each TOPIC_CHIPS as topic (topic)}
 					<button type="button" onclick={() => searchTopic(topic)}
 						class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
@@ -383,7 +383,7 @@
 							class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded
 								   bg-navy text-white text-xs font-medium hover:bg-navy/90 transition-colors
 								   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy">
-							⬇ Install App Offline
+						<span aria-hidden="true">⬇</span> Install App Offline
 						</button>
 					{:else}
 						<p class="text-xs text-stone-400 dark:text-slate-500 leading-relaxed">
@@ -467,8 +467,7 @@
 									<div class="mt-3 flex flex-wrap items-center gap-4">
 										{#if group.source.displayMode === 'full-text'}
 											<button type="button"
-												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"
-												onclick={() => copyPassage(result.citation)}>Copy</button>
+												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"											aria-label="Copy passage to clipboard"												onclick={() => copyPassage(result.citation)}>Copy</button>
 										{/if}
 										{#if group.source.displayMode === 'full-text'}
 											<a href="/passage/{result.passage.sourceId}/{result.passage.id}"
@@ -483,8 +482,7 @@
 											</ExternalLink>
 										{/if}
 										<button type="button"
-											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
-											onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>Share</button>
+											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"										aria-label="Share passage link"											onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>Share</button>
 									</div>
 								</article>
 							{/each}

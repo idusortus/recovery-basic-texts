@@ -27,7 +27,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 | # | Task | When needed | Notes |
 |---|---|---|---|
 | 0.1 | **Cloudflare account** (free tier) | Before first deploy (LUW 13) | You already registered `basictexts.org` at Cloudflare Registrar ✓ |
-| 0.2 | **Create a Cloudflare Pages project**, connect it to the GitHub repo | LUW 13 | Build command `npm run build`; output dir `.svelte-kit/cloudflare` (adapter-cloudflare). Auto-deploy on push to `main`; preview deploys on PRs. |
+| 0.2 | **Create a Cloudflare Pages project**, connect it to the GitHub repo | ✓ Done | Build command `pnpm run build`; output dir `.svelte-kit/cloudflare` (adapter-cloudflare). Set env var `NODE_VERSION=20`. Auto-deploy on push to `main`; preview deploys on PRs. |
 | 0.3 | **Point `basictexts.org` DNS at the Pages project** | LUW 13 | Add the custom domain in Pages → Custom domains. Cloudflare handles the cert. |
 | 0.4 | **Create a Cloudflare KV namespace** (e.g. `SEARCH_LOG`) | LUW 12 (logging) | Bind it to the Pages project as `SEARCH_LOG`. Free tier is ample. |
 | 0.5 | **Decide repo owner/name** and make the GitHub repo public | LUW 13 / README | Update `github.com/[owner]/basictexts` placeholders. |
@@ -37,9 +37,9 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 
 ---
 
-## Phase 1 — Foundation: data + search core
+## Phase 1 — Foundation: data + search core ✓
 
-### LUW 1 — Project scaffold
+### LUW 1 — Project scaffold ✓
 **Goal:** A running SvelteKit + TypeScript + Tailwind app with the Cloudflare adapter and PWA plugin wired but empty.
 **Deliverables:**
 - SvelteKit (TS) project at repo root (alongside `corpus/`, `proto/`, `docs/`)
@@ -49,10 +49,10 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 - Base layout, `app.css` with design tokens + `.sr-only` utility + `prefers-reduced-motion` handling
 - Scripts: `dev`, `build`, `preview`, `lint`, `check`
 **Depends on:** —
-**Acceptance:** `npm run dev` serves a blank styled shell; `npm run build` succeeds with the Cloudflare adapter.
+**Acceptance:** `pnpm run dev` serves a blank styled shell; `pnpm run build` succeeds with the Cloudflare adapter.
 **Suggested LLM:** **MAI-Code-1-Flash** (well-trodden scaffolding).
 
-### LUW 2 — Domain types & registry loading
+### LUW 2 — Domain types & registry loading ✓
 **Goal:** Typed data model and a loader for the source registry.
 **Deliverables:**
 - `src/lib/types.ts`: `Source`, `Passage`, `SearchResult`, `GroupedResults`, `LogRecord`, `KnownException`, `DisplayMode` (matching PRD §6)
@@ -62,7 +62,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Types compile; a unit test loads the registry and returns sources in order.
 **Suggested LLM:** **Claude Sonnet 4.6** (types are load-bearing across the app).
 
-### LUW 3 — Big Book corpus ingestion (data prep)
+### LUW 3 — Big Book corpus ingestion (data prep) ✓
 **Goal:** The 1st-edition Big Book as a clean corpus file with **frozen, stable passage IDs**.
 **Deliverables:**
 - `corpus/sources/big-book-1ed.json` per CORPUS-GUIDE Part 3 (chapters, foreword, Doctor's Opinion, Dr. Bob's story, Spiritual Experience appendix)
@@ -72,17 +72,17 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** `corpus/scripts/validate.js` passes; spot-check known passages (e.g. "How It Works", p.58–60) resolve to correct IDs.
 **Suggested LLM:** **Claude Sonnet 4.6** (judgement on edition correctness + ID scheme is a forever-contract).
 
-### LUW 4 — Prebuilt index build script
-**Goal:** `npm run build:index` compiles corpus → static index assets (PRD §7.2).
+### LUW 4 — Prebuilt index build script ✓
+**Goal:** `pnpm run build:index` compiles corpus → static index assets (PRD §7.2).
 **Deliverables:**
 - `corpus/scripts/build-index.mjs`: reads registry + corpus files, builds a deterministic `minisearch` index, emits `static/index/minisearch.json`, `static/index/passages.json`, `static/index/index-meta.json` (content-hash `version`)
 - `corpus/scripts/validate.js`: schema + referential-integrity checks (PRD §6.5)
-- Wire `build:index` into `npm run build`
+- Wire `build:index` into `pnpm run build`
 **Depends on:** LUW 2, LUW 3
 **Acceptance:** Running the script on the Big Book emits all three files; re-running with unchanged input produces an identical `version` hash (determinism).
 **Suggested LLM:** **Claude Sonnet 4.6** (determinism + hashing correctness matter).
 
-### LUW 5 — Client search service + KWIC/highlight
+### LUW 5 — Client search service + KWIC/highlight ✓
 **Goal:** Client-side search with display-mode-correct KWIC and highlighting.
 **Deliverables:**
 - `src/lib/search/index.ts`: hydrate `minisearch` from `static/index/`, run keyword (AND) + quoted-phrase queries, group by source, 150ms debounce
@@ -93,7 +93,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Tests pass; searching "fear" returns grouped Big Book results with correct highlights; `concordance-only` never yields full text.
 **Suggested LLM:** **Claude Sonnet 4.6** (core engine + copyright gate + security).
 
-### LUW 6 — Functional search results page
+### LUW 6 — Functional search results page ✓
 **Goal:** A working (unstyled-ish) search page proving the pipeline end-to-end.
 **Deliverables:**
 - `/` route: search input, results grouped by source with counts, KWIC cards
@@ -104,9 +104,9 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 
 ---
 
-## Phase 2 — PWA & Offline
+## Phase 2 — PWA & Offline ✓
 
-### LUW 7 — PWA manifest, icons, precache
+### LUW 7 — PWA manifest, icons, precache ✓
 **Goal:** Installable PWA that precaches the app shell and index.
 **Deliverables:**
 - `@vite-pwa/sveltekit` config: manifest (name, theme `#2C4A6E`, bg `#F8F7F4`, standalone), real 192/512 icons (replace prototype's SVG-data-URI hack with proper PNGs)
@@ -115,7 +115,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Lighthouse PWA install criteria pass; app installs to home screen.
 **Suggested LLM:** **MAI-Code-1-Flash** (config-driven, well-documented plugin).
 
-### LUW 8 — Offline behavior, versioning & link guards
+### LUW 8 — Offline behavior, versioning & link guards ✓
 **Goal:** Full offline search + graceful online-only degradation + cache-busting.
 **Deliverables:**
 - Startup index-version check vs `index-meta.json` (network-first, tiny) with "Updated library available — refresh" affordance (PRD §7.6)
@@ -127,10 +127,10 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 
 ---
 
-## Phase 3 — Full Corpus & UI
+## Phase 3 — Full Corpus & UI ✓ (partial)
 
-### LUW 9 — Remaining v1 corpus
-**Goal:** Ingest 12&12 (`snippet`), Twelve Traditions, and Daily Reflections (`concordance-only`, if unblocked).
+### LUW 9 — Remaining v1 corpus ✓ (partial)
+**Status:** 12&12 and Daily Reflections ingested. `twelve-traditions` **backburnered** — corpus file not yet sourced; registry entry and corpus JSON are the only steps needed when ready (no code changes). Big Book is 42-passage stub; full 1st-ed text still to source.
 **Deliverables:**
 - `corpus/sources/twelve-steps-traditions.json` (`snippet`; web-search passthrough link `https://www.google.com/search?q=aa+12x12+{{query}}` + purchase link)
 - `corpus/sources/twelve-traditions.json` (short list; `full-text` if PD-confirmed, else `snippet`)
@@ -140,7 +140,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Validation passes; `snippet`/`concordance-only` render clipped only; DR (if enabled) never renders full text.
 **Suggested LLM:** **Claude Sonnet 4.6** (copyright-mode correctness per source).
 
-### LUW 10 — Design system applied to search + nav + theme
+### LUW 10 — Design system applied to search + nav + theme ✓
 **Goal:** The polished UI from §8.2–8.4 (the "good" from the prototype), as Svelte components.
 **Deliverables:**
 - Navigation bar (sticky, blur, logo monogram, nav items + icons, online/offline badge, theme toggle, mobile menu)
@@ -152,7 +152,7 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Visual parity with prototype intent; light/dark both correct; copy never copies full protected text.
 **Suggested LLM:** **Claude Sonnet 4.6** (design fidelity + copyright guard in copy).
 
-### LUW 11 — Secondary routes & known-exceptions
+### LUW 11 — Secondary routes & known-exceptions ✓
 **Goal:** The remaining screens and the known-exceptions hint system.
 **Deliverables:**
 - `/reflection`: DR teaser, date label/title/KWIC, prev/next day, `<input type="date">`, `?date=MM-DD`, "No reflection available" state, prominent aa.org link
@@ -167,9 +167,9 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 
 ---
 
-## Phase 4 — Logging, Polish & Launch
+## Phase 4 — Logging, Polish & Launch (in progress)
 
-### LUW 12 — Usage logging (anonymous, offline-queued)
+### LUW 12 — Usage logging (anonymous, offline-queued) ✓
 **Goal:** Capture submitted search terms without collecting user data.
 **Deliverables:**
 - IndexedDB queue: enqueue `{ q, resultCount, sourceFilter, ts }` on **submitted** search (capped, FIFO)
@@ -180,13 +180,18 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Acceptance:** Offline searches queue and flush on reconnect; KV entries contain no PII; logging failure never affects search.
 **Suggested LLM:** **Claude Sonnet 4.6** (privacy guarantees + queue/flush correctness).
 
-### LUW 13 — Accessibility, docs, deploy
+### LUW 13 — Accessibility, docs, deploy (in progress)
 **Goal:** Ship it.
-**Deliverables:**
-- Accessibility audit: contrast, visible focus, keyboard nav, screen-reader card semantics, `<mark>` announcements, reduced-motion
-- `README.md`, `CONTRIBUTING.md` (how to add a corpus → CORPUS-GUIDE), `LICENSE` (MIT)
-- Cloudflare Pages connected (0.2), custom domain (0.3), KV bound (0.4)
-- Production deploy + post-deploy smoke test (install, offline search, logging, links)
+**Status:**
+- [x] `README.md` rewritten to reflect actual project state (2026-06-28)
+- [x] `CONTRIBUTING.md` created (2026-06-28)
+- [x] `LICENSE` (MIT) created (2026-06-28)
+- [x] Cloudflare Pages connected to GitHub (2026-06-28)
+- [x] Accessibility easy wins: skip nav, ARIA roles/labels, mobile dialog `aria-modal`, mark sr-only, Copy/Share labels (2026-06-28)
+- [ ] Full a11y audit: focus trap, Lighthouse a11y ≥ 95 — **backburnered**
+- [ ] Custom domain (0.3) — point basictexts.org DNS at Pages project
+- [ ] KV bound (0.4) — bind `SEARCH_LOG` namespace in Pages settings
+- [ ] Production deploy + post-deploy smoke test
 **Depends on:** all prior
 **Acceptance:** Live on basictexts.org; PWA installs; offline search works; Lighthouse a11y ≥ 95.
 **Suggested LLM:** **Claude Sonnet 4.6** (a11y judgement); **MAI-Code-1-Flash** for README/CONTRIBUTING drafting.

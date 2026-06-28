@@ -25,6 +25,7 @@ import type {
 } from '$lib/types';
 import { enabledSources, getSourceById } from '$lib/corpus/registry';
 import { buildKwic, buildCitation } from './kwic';
+import { getSynonymTerms } from '$lib/corpus/synonyms';
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
@@ -118,6 +119,17 @@ async function _load(): Promise<void> {
 	}
 }
 
+// ─── Query normalizer ────────────────────────────────────────────────────────
+
+/**
+ * Strip apostrophes (straight and curly) so contractions match indexed tokens.
+ * Applied to both phrases and keywords before passing to MiniSearch.
+ * F4a — features-001-plan
+ */
+function normalizeForSearch(s: string): string {
+	return s.replace(/['‘’ʼ]/g, '');
+}
+
 // ─── Query parser ─────────────────────────────────────────────────────────────
 
 interface ParsedQuery {
@@ -188,7 +200,7 @@ export function search(
 
 	// Phrase searches: each phrase is an exact-phrase search
 	for (const phrase of phrases) {
-		const results = ms.search(phrase, {
+		const results = ms.search(normalizeForSearch(phrase), {
 			combineWith: 'AND',
 			boost: { text: 2 }
 		});
@@ -199,11 +211,13 @@ export function search(
 		}
 	}
 
-	// Keyword searches: AND across all keywords
+	// Keyword searches: AND across all keywords, with fuzzy tolerance (F4b)
 	if (keywords.length > 0) {
-		const results = ms.search(keywords.join(' '), {
+		const normalizedKw = normalizeForSearch(keywords.join(' '));
+		const results = ms.search(normalizedKw, {
 			combineWith: 'AND',
-			boost: { text: 2 }
+			boost: { text: 2 },
+			fuzzy: 0.2
 		});
 		for (const r of results) {
 			if (activeSourceIds.has(r.sourceId as string)) {
@@ -217,9 +231,10 @@ export function search(
 		if (phrases.length > 0) {
 			const phraseMatches = new Set(matchedIds);
 			const keywordMatches = new Set<string>();
-			const kwResults = ms.search(keywords.join(' '), {
+			const kwResults = ms.search(normalizedKw, {
 				combineWith: 'AND',
-				boost: { text: 2 }
+				boost: { text: 2 },
+				fuzzy: 0.2
 			});
 			for (const r of kwResults) {
 				if (activeSourceIds.has(r.sourceId as string)) {
@@ -229,6 +244,22 @@ export function search(
 			matchedIds.clear();
 			for (const id of phraseMatches) {
 				if (keywordMatches.has(id)) matchedIds.add(id);
+			}
+		}
+
+		// Synonym expansion: bare keyword queries only (F5)
+		// Phrase queries are kept strict; only expand plain keyword searches.
+		if (phrases.length === 0) {
+			const synTerms = getSynonymTerms(keywords);
+			for (const term of synTerms) {
+				const synResults = ms.search(normalizeForSearch(term), {
+					boost: { text: 1.5 }
+				});
+				for (const r of synResults) {
+					if (activeSourceIds.has(r.sourceId as string)) {
+						matchedIds.add(r.id as string);
+					}
+				}
 			}
 		}
 	}

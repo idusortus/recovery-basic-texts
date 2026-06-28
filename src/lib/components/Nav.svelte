@@ -54,6 +54,7 @@
 			<!-- Logo -->
 			<a
 				href="/"
+				onclick={closeMobile}
 				class="flex items-center gap-2.5 flex-shrink-0 focus-visible:outline-none
 					   focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400 rounded"
 				aria-label="basictexts.org home"
@@ -100,6 +101,7 @@
 					   {$online
 					   	? 'text-green-600 dark:text-green-400'
 					   	: 'text-amber-600 dark:text-amber-400'}"
+				role="status"
 				aria-label={$online ? 'Online' : 'Offline'}
 				title={$online ? 'Connected' : 'Offline — search still works'}
 			>
@@ -158,6 +160,7 @@
 			class="md:hidden border-t border-stone-200 dark:border-slate-800
 				   bg-stone-50 dark:bg-slate-950 animate-fade-in"
 			role="dialog"
+			aria-modal="true"
 			aria-label="Mobile navigation"
 		>
 			<div class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">

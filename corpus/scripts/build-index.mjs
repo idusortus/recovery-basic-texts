@@ -105,6 +105,16 @@ console.log(`[build-index] Total: ${allPassages.length} passages across ${Object
 
 // ─── Build minisearch index ───────────────────────────────────────────────────
 
+/**
+ * Strip apostrophes (straight and curly) from a term so contractions are indexed
+ * as single tokens (haven't → havent). Applied to indexed fields; the same
+ * normalization is applied at query time in src/lib/search/index.ts.
+ * F4a — features-001-plan
+ */
+function normalizeForIndex(str) {
+	return str.replace(/['\u2018\u2019\u02bc]/g, '');
+}
+
 const ms = new MiniSearch({
 	fields: ['text', 'title', 'chapterRef'],
 	storeFields: ['id', 'sourceId'],
@@ -116,7 +126,14 @@ const ms = new MiniSearch({
 	}
 });
 
-ms.addAll(allPassages);
+ms.addAll(
+	allPassages.map((p) => ({
+		...p,
+		text: normalizeForIndex(p.text),
+		title: normalizeForIndex(p.title),
+		chapterRef: p.chapterRef ? normalizeForIndex(p.chapterRef) : null
+	}))
+);
 
 // ─── Build passages lookup ────────────────────────────────────────────────────
 

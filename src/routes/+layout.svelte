@@ -81,8 +81,19 @@
 </script>
 
 <div class="min-h-screen bg-parchment dark:bg-slate-950 transition-colors duration-200">
+	<!-- Skip navigation — WCAG 2.4.1 -->
+	<a
+		href="#main-content"
+		class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-4 focus:left-4
+			   focus:px-4 focus:py-2 focus:rounded focus:bg-navy focus:text-white
+			   focus:ring-2 focus:ring-white focus:outline-none text-sm font-medium"
+	>
+		Skip to main content
+	</a>
 	<Nav {isDark} ontoggleTheme={toggleTheme} />
-	{@render children()}
+	<div id="main-content" tabindex="-1">
+		{@render children()}
+	</div>
 	<Toasts />
 </div>
 
