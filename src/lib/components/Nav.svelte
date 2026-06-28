@@ -13,7 +13,7 @@
 		WifiOff,
 		Menu,
 		X
-	} from 'lucide-svelte';
+	} from '@lucide/svelte';
 
 	const {
 		isDark,

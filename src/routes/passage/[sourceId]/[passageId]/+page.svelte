@@ -4,7 +4,7 @@
 	import { loadSearchIndex, searchReady, searchError, getPassages } from '$lib/search/index';
 	import { getSourceById } from '$lib/corpus/registry';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
-	import { ArrowLeft, ArrowRight, Copy, Share2 } from 'lucide-svelte';
+	import { ArrowLeft, ArrowRight, Copy, Share2 } from '@lucide/svelte';
 	import type { Passage, Source } from '$lib/types';
 	import { showToast } from '$lib/stores/toast';
 

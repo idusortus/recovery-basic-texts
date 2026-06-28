@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X } from 'lucide-svelte';
+	import { X } from '@lucide/svelte';
 	import { toasts, dismissToast } from '$lib/stores/toast';
 </script>
 

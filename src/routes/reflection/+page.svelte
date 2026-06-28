@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
-	import { BookOpen } from 'lucide-svelte';
+	import { BookOpen } from '@lucide/svelte';
 </script>
 
 <svelte:head>

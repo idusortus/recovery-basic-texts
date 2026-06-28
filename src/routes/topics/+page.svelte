@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Search } from 'lucide-svelte';
+	import { Search } from '@lucide/svelte';
 
 	const TOPICS_A_Z = [
 		'Acceptance', 'Action', 'Anger', 'Anonymity', 'Belief',
