@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Base custom styles to reinforce the "calm, not clinical" recovery literature vibe */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.literature-text {
+  font-family: var(--font-serif);
+  line-height: 1.75;
+}
+
+/* Warm, highlighted paper effect */
+mark {
+  background-color: #fef3c7; /* Tailwind amber-100 */
+  color: #78350f; /* Tailwind amber-900 */
+  border-radius: 0.125rem;
+  padding-left: 0.125rem;
+  padding-right: 0.125rem;
+}
+
+.dark mark {
+  background-color: #78350f; /* Tailwind amber-900 */
+  color: #fef3c7; /* Tailwind amber-100 */
+}
+
+/* Custom scrollbar to keep layout minimal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}

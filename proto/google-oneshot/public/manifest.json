@@ -1,0 +1,24 @@
+{
+  "short_name": "basictexts",
+  "name": "basictexts.org — AA Literature Concordance",
+  "description": "A free, open-source Alcoholics Anonymous Literature Concordance and Reference Tool.",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 width=%22192%22 height=%22192%22><rect width=%22100%%22 height=%22100%%22 fill=%22%232c4a6e%22/><text x=%2250%%22 y=%2255%%22 font-family=%22Lora, Georgia, serif%22 font-size=%22100%22 font-weight=%22bold%22 fill=%22%23c8902a%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22>T</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 width=%22512%22 height=%22512%22><rect width=%22100%%22 height=%22100%%22 fill=%22%232c4a6e%22/><text x=%2250%%22 y=%2255%%22 font-family=%22Lora, Georgia, serif%22 font-size=%22260%22 font-weight=%22bold%22 fill=%22%23c8902a%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22>T</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f8f7f4",
+  "theme_color": "#2c4a6e",
+  "display": "standalone",
+  "orientation": "any"
+}
