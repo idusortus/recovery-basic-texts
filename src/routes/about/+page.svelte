@@ -3,7 +3,11 @@
 </script>
 
 <svelte:head>
-	<title>About — basictexts.org</title>
+	<title>About basictexts.org — AA recovery and step work search</title>
+	<meta
+		name="description"
+		content="Learn how basictexts.org helps people search AA literature for recovery, step work, sobriety, and daily reflection themes."
+	/>
 </svelte:head>
 
 <main class="max-w-4xl mx-auto px-4 py-8">
@@ -174,15 +178,13 @@
 				it — it helps cover hosting costs and motivates continued development.
 			</p>
 			<div class="flex flex-wrap gap-3">
-				<!-- Ko-fi placeholder -->
-				<span
+				<ExternalLink
+					href="https://ko-fi.com/wiscodev"
 					class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
-						   bg-stone-100 dark:bg-slate-800 text-stone-400 dark:text-slate-500
-						   border border-stone-200 dark:border-slate-700 cursor-not-allowed"
-					title="Ko-fi link coming soon"
+						   bg-navy text-white hover:bg-navy/90 transition-colors"
 				>
-					Ko-fi (coming soon)
-				</span>
+					Support on Ko-fi
+				</ExternalLink>
 				<!-- GitHub Sponsors placeholder -->
 				<span
 					class="inline-flex items-center px-4 py-2 rounded text-sm font-medium

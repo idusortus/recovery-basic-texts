@@ -25,7 +25,11 @@
 </script>
 
 <svelte:head>
-	<title>Sources — basictexts.org</title>
+	<title>AA sources indexed by basictexts.org — Big Book, 12 Steps, Daily Reflections</title>
+	<meta
+		name="description"
+		content="Browse the AA literature sources indexed by basictexts.org, including the Big Book, 12 Steps, 12 Traditions, and Daily Reflections."
+	/>
 </svelte:head>
 
 <main class="max-w-4xl mx-auto px-4 py-8">

@@ -34,7 +34,11 @@
 </script>
 
 <svelte:head>
-	<title>Daily Reflection — basictexts.org</title>
+	<title>Daily Reflection — AA recovery and step work reading</title>
+	<meta
+		name="description"
+		content="Read today's AA Daily Reflection and discover recovery-oriented passages that support step work and sobriety."
+	/>
 </svelte:head>
 
 <main class="max-w-4xl mx-auto px-4 py-8">

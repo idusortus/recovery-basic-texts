@@ -24,7 +24,11 @@
 </script>
 
 <svelte:head>
-	<title>Topics — basictexts.org</title>
+	<title>Browse AA recovery topics — step work, fear, gratitude, humility, and more</title>
+	<meta
+		name="description"
+		content="Browse recovery and step work topics in AA literature, from acceptance and resentment to fear, gratitude, humility, and honesty."
+	/>
 </svelte:head>
 
 <main class="max-w-4xl mx-auto px-4 py-8">

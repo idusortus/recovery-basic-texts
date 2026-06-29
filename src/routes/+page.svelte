@@ -29,6 +29,20 @@
 		'Humility', 'God', 'Honesty', 'Anger', 'Ego', 'Self'
 	];
 
+	const websiteSchema = {
+		'@context': 'https://schema.org',
+		'@type': 'WebSite',
+		name: 'basictexts.org',
+		url: 'https://basictexts.org',
+		description:
+			'Free AA recovery and step work search tool for Alcoholics Anonymous literature and daily reflections.',
+		potentialAction: {
+			'@type': 'SearchAction',
+			target: 'https://basictexts.org/?q={search_term_string}',
+			'query-input': 'required name=search_term_string'
+		}
+	};
+
 	// ─── Load index on mount; restore query from URL ──────────────────────────
 
 	onMount(async () => {
@@ -145,7 +159,18 @@
 </script>
 
 <svelte:head>
-	<title>basictexts.org — AA Concordance</title>
+	<title>basictexts.org — AA recovery search and step work concordance</title>
+	<meta
+		name="description"
+		content="Search AA recovery passages, step work themes, sobriety reflections, and daily readings across the Big Book, 12 Steps, 12 Traditions, and more."
+	/>
+	<meta
+		name="keywords"
+		content="AA recovery, step work, sobriety, Big Book, 12 steps, 12 traditions, daily reflections, recovery search"
+	/>
+	<script type="application/ld+json">
+		{JSON.stringify(websiteSchema)}
+	</script>
 </svelte:head>
 
 <main class="max-w-6xl mx-auto px-4 py-8">
@@ -160,10 +185,10 @@
 				Free, Open-Source &amp; PWA Installable
 			</div>
 			<h1 class="font-serif text-4xl sm:text-5xl font-bold text-navy dark:text-slate-100 mb-4 leading-tight">
-				Find what you're looking for<br class="hidden sm:block" /> in AA literature.
+				Find AA recovery and step work passages<br class="hidden sm:block" /> in the literature you already trust.
 			</h1>
 			<p class="text-stone-500 dark:text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
-				Search any word, phrase, or topic to instantly discover every occurrence
+				Search for sobriety, recovery, acceptance, resentment, fear, gratitude, and other step work themes
 				across the Big Book, 12 Steps, 12 Traditions, and Daily Reflections.
 			</p>
 		</div>
