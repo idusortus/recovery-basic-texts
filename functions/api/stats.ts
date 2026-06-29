@@ -114,7 +114,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 		.map(([sourceId, count]) => ({ sourceId, count }))
 		.sort((a, b) => b.count - a.count);
 
-	theStats: StatsResponse = {
+	const theStats: StatsResponse = {
 		totalRecords,
 		latestTs: timestamps.length > 0 ? timestamps.reduce((latest, ts) => (ts > latest ? ts : latest)) : null,
 		oldestTs: timestamps.length > 0 ? timestamps.reduce((oldest, ts) => (ts < oldest ? ts : oldest)) : null,

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import Nav from '$lib/components/Nav.svelte';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import { indexMeta } from '$lib/search/index';
@@ -80,6 +81,18 @@
 	onMount(() => {
 		initInstallPrompt();
 	});
+
+	// ─── GA SPA page-view tracking ───────────────────────────────────────────────
+	// SvelteKit does client-side navigation — GA only fires once on hard load
+	// without this. afterNavigate fires on every route change.
+	afterNavigate(({ to }) => {
+		const gaFn = (window as unknown as Record<string, unknown>)['gtag'];
+		if (typeof gaFn !== 'function' || !to) return;
+		(gaFn as (...args: unknown[]) => void)('event', 'page_view', {
+			page_path: to.url.pathname + to.url.search,
+			page_title: document.title
+		});
+	});
 </script>
 
 <svelte:head>
@@ -143,25 +156,15 @@
 						   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
 						   transition-colors duration-150 text-sm font-medium"
 				>
-					<!-- Folding chair icon — Meeting Guide brand mark -->
-					<span class="inline-flex items-center justify-center w-6 h-6 rounded bg-[#1A6FBF] flex-shrink-0" aria-hidden="true">
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="14" height="14" aria-hidden="true">
-							<!-- Chair back -->
-							<rect x="6" y="2" width="12" height="2" rx="1"/>
-							<!-- Chair seat -->
-							<rect x="6" y="9" width="12" height="2" rx="1"/>
-							<!-- Left front leg -->
-							<rect x="7" y="11" width="2" height="9" rx="1"/>
-							<!-- Right front leg -->
-							<rect x="15" y="11" width="2" height="9" rx="1"/>
-							<!-- Left back leg -->
-							<rect x="7" y="4" width="2" height="5" rx="1"/>
-							<!-- Right back leg -->
-							<rect x="15" y="4" width="2" height="5" rx="1"/>
-							<!-- Footrest -->
-							<rect x="7" y="18" width="10" height="2" rx="1"/>
-						</svg>
-					</span>
+				<!-- Meeting Guide official icon from aa.org -->
+				<img
+					src="https://www.aa.org/sites/default/files/2021-06/MG%20icon.png"
+					alt=""
+					aria-hidden="true"
+					width="24"
+					height="24"
+					class="w-6 h-6 rounded flex-shrink-0 object-contain"
+				/>
 					Meeting Guide
 				</a>
 
