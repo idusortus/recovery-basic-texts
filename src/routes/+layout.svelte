@@ -124,6 +124,81 @@
 	<div id="main-content" tabindex="-1">
 		{@render children()}
 	</div>
+
+	<footer class="mt-16 border-t border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-950 transition-colors duration-200">
+		<div class="max-w-6xl mx-auto px-4 py-8">
+			<p class="text-xs uppercase tracking-widest text-stone-400 dark:text-slate-500 font-medium mb-4">
+				Helpful resources
+			</p>
+			<div class="flex flex-wrap items-center gap-4">
+
+				<!-- Meeting Guide -->
+				<a
+					href="https://www.aa.org/meeting-guide-app"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center gap-2.5 px-3 py-2 rounded border
+						   border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
+						   text-stone-600 dark:text-slate-400
+						   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+						   transition-colors duration-150 text-sm font-medium"
+				>
+					<!-- Folding chair icon — Meeting Guide brand mark -->
+					<span class="inline-flex items-center justify-center w-6 h-6 rounded bg-[#1A6FBF] flex-shrink-0" aria-hidden="true">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="14" height="14" aria-hidden="true">
+							<!-- Chair back -->
+							<rect x="6" y="2" width="12" height="2" rx="1"/>
+							<!-- Chair seat -->
+							<rect x="6" y="9" width="12" height="2" rx="1"/>
+							<!-- Left front leg -->
+							<rect x="7" y="11" width="2" height="9" rx="1"/>
+							<!-- Right front leg -->
+							<rect x="15" y="11" width="2" height="9" rx="1"/>
+							<!-- Left back leg -->
+							<rect x="7" y="4" width="2" height="5" rx="1"/>
+							<!-- Right back leg -->
+							<rect x="15" y="4" width="2" height="5" rx="1"/>
+							<!-- Footrest -->
+							<rect x="7" y="18" width="10" height="2" rx="1"/>
+						</svg>
+					</span>
+					Meeting Guide
+				</a>
+
+				<!-- AAWS -->
+				<a
+					href="https://www.aa.org"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center gap-2 px-3 py-2 rounded border
+						   border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
+						   text-stone-600 dark:text-slate-400
+						   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+						   transition-colors duration-150 text-sm font-medium"
+				>
+					aa.org
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+				</a>
+
+				<!-- Silkworth -->
+				<a
+					href="https://silkworth.net"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center gap-2 px-3 py-2 rounded border
+						   border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
+						   text-stone-600 dark:text-slate-400
+						   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+						   transition-colors duration-150 text-sm font-medium"
+				>
+					silkworth.net
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+				</a>
+
+			</div>
+		</div>
+	</footer>
+
 	<Toasts />
 </div>
 
