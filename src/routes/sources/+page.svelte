@@ -18,7 +18,6 @@
 		{ label: 'Big Book at aa.org', url: 'https://www.aa.org/the-big-book' },
 		{ label: 'Big Book at anonpress.org (full text)', url: 'https://anonpress.org/bb/' },
 		{ label: 'Free PDF at anonpress.org', url: 'https://anonpress.org/pdf/' },
-		{ label: 'AA history archive at silkworth.net', url: 'https://silkworth.net/' },
 		{ label: 'Big Book scan at archive.org', url: 'https://archive.org/search?query=alcoholics+anonymous+first+edition' },
 		{ label: 'Daily Reflections at aa.org', url: 'https://www.aa.org/daily-reflections' }
 	];
