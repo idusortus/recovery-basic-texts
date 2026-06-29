@@ -150,6 +150,18 @@
 		} catch { /* User cancelled */ }
 	}
 
+	async function shareSearch(q: string) {
+		const url = `https://basictexts.org/?q=${encodeURIComponent(q)}`;
+		try {
+			if (navigator.share) {
+				await navigator.share({ url, title: 'basictexts.org — ' + q });
+			} else {
+				await navigator.clipboard.writeText(url);
+				showToast('Search link copied to clipboard.', 'info', 2500);
+			}
+		} catch { /* User cancelled */ }
+	}
+
 	const totalCount = $derived(results.reduce((acc, g) => acc + g.results.length, 0));
 
 	const todayMmDd = (() => {
@@ -506,8 +518,17 @@
 												Read at official source →
 											</ExternalLink>
 										{/if}
-										<button type="button"
-											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"										aria-label="Share passage link"											onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>Share</button>
+									{#if group.source.displayMode === 'full-text'}
+											<button type="button"
+												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
+												aria-label="Share passage link"
+												onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>Share</button>
+										{:else}
+											<button type="button"
+												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
+												aria-label="Share search link"
+												onclick={() => shareSearch(debouncedQuery)}>Share search</button>
+										{/if}
 									</div>
 								</article>
 							{/each}
