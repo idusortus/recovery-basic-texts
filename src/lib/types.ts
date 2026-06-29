@@ -68,6 +68,8 @@ export interface SearchResult {
 	kwic: string;
 	/** Plain-text citation for clipboard copy. */
 	citation: string;
+	/** True when this result was matched via synonym expansion, not the literal query term. */
+	matchedBySynonym?: boolean;
 }
 
 export interface GroupedResults {

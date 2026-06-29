@@ -22,6 +22,15 @@
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover" class="bg-parchment dark:bg-slate-950 text-[#1A1A1A] dark:text-slate-200 transition-colors duration-200">
+		<!-- Blocking theme script: apply dark class before first paint to avoid flash -->
+		<script>
+			(function () {
+				var saved = localStorage.getItem('basictexts-theme');
+				if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+					document.documentElement.classList.add('dark');
+				}
+			})();
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

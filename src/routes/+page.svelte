@@ -492,8 +492,11 @@
 						<div class="space-y-3">
 							{#each group.results as result (result.passage.id)}
 								<article class="bg-white dark:bg-slate-900/40 rounded shadow-sm border border-stone-200
-									   dark:border-slate-800 px-5 py-4 transition-colors duration-200">
-									<p class="font-serif text-xs text-stone-400 dark:text-slate-500 mb-2 uppercase tracking-wide">
+									   dark:border-slate-800 px-5 py-4 transition-colors duration-200">								{#if result.matchedBySynonym}
+									<p class="text-xs text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+										<span aria-hidden="true">~</span> Similar result — matched via a related term
+									</p>
+								{/if}									<p class="font-serif text-xs text-stone-400 dark:text-slate-500 mb-2 uppercase tracking-wide">
 										{result.passage.chapterRef ?? result.passage.title}
 										{#if result.passage.pageRef}
 											· p.{result.passage.pageRef.replace(/^p\.?/, '')}

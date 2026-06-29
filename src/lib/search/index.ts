@@ -197,6 +197,8 @@ export function search(
 
 	// Collect all matching passage IDs (union of phrase + keyword searches)
 	const matchedIds = new Set<string>();
+	// Tracks IDs matched directly (not via synonym expansion); set during keyword path
+	let directMatchIds: Set<string> | null = null;
 
 	// Phrase searches: each phrase is an exact-phrase search
 	for (const phrase of phrases) {
@@ -250,6 +252,9 @@ export function search(
 		// Synonym expansion: bare keyword queries only (F5)
 		// Phrase queries are kept strict; only expand plain keyword searches.
 		if (phrases.length === 0) {
+			// Snapshot direct matches before synonym expansion so we can flag synonym-only results
+			directMatchIds = new Set(matchedIds);
+
 			const synTerms = getSynonymTerms(keywords);
 			for (const term of synTerms) {
 				const synResults = ms.search(normalizeForSearch(term), {
@@ -281,7 +286,11 @@ export function search(
 			passage.pageRef
 		);
 
-		const result: SearchResult = { passage, source, kwic, citation };
+		const result: SearchResult = {
+			passage, source, kwic, citation,
+			// Flag results that only appeared via synonym expansion, not the literal query
+			matchedBySynonym: directMatchIds !== null && !directMatchIds.has(id)
+		};
 
 		if (!resultsBySource.has(source.id)) {
 			resultsBySource.set(source.id, []);
