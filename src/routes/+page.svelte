@@ -197,11 +197,10 @@
 				Free, Open-Source &amp; PWA Installable
 			</div>
 			<h1 class="font-serif text-4xl sm:text-5xl font-bold text-navy dark:text-slate-100 mb-4 leading-tight">
-				Find AA recovery and step work passages<br class="hidden sm:block" /> in the literature you already trust.
+				There is a solution.<br class="hidden sm:block" />
 			</h1>
 			<p class="text-stone-500 dark:text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
-				Search for sobriety, recovery, acceptance, resentment, fear, gratitude, and other step work themes
-				across the Big Book, 12 Steps, 12 Traditions, and Daily Reflections.
+				Find recovery passages and references in our basic literature.
 			</p>
 		</div>
 	{/if}
