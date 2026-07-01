@@ -27,7 +27,12 @@
 
 	const navLinks = [
 		{ href: '/', label: 'Concordance', Icon: Search },
-		{ href: '/reflection', label: 'Daily Reflection', Icon: BookOpen },
+		{
+			href: 'https://www.aa.org/daily-reflections',
+			label: 'Daily Reflection',
+			Icon: BookOpen,
+			external: true
+		},
 		{ href: '/topics', label: 'Topics', Icon: Tag },
 		{ href: '/sources', label: 'Sources', Icon: Library },
 		{ href: '/about', label: 'About', Icon: Info }
@@ -35,6 +40,7 @@
 
 	function isActive(href: string): boolean {
 		if (href === '/') return $page.url.pathname === '/';
+		if (href.startsWith('http')) return false;
 		return $page.url.pathname.startsWith(href);
 	}
 
@@ -76,9 +82,11 @@
 
 			<!-- Desktop nav links -->
 			<div class="hidden md:flex items-center gap-1 ml-2">
-				{#each navLinks as { href, label, Icon } (href)}
+				{#each navLinks as { href, label, Icon, external = false } (href)}
 					<a
 						{href}
+						target={external ? '_blank' : undefined}
+						rel={external ? 'noopener noreferrer' : undefined}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium
 							   transition-colors duration-150
 							   {isActive(href)
@@ -164,9 +172,11 @@
 			aria-label="Mobile navigation"
 		>
 			<div class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
-				{#each navLinks as { href, label, Icon } (href)}
+				{#each navLinks as { href, label, Icon, external = false } (href)}
 					<a
 						{href}
+						target={external ? '_blank' : undefined}
+						rel={external ? 'noopener noreferrer' : undefined}
 						onclick={closeMobile}
 						class="flex items-center gap-2.5 px-3 py-2.5 rounded text-sm font-medium
 							   transition-colors duration-150
