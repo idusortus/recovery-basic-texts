@@ -1,20 +1,5 @@
 [
   {
-    "id": "big-book-1ed",
-    "title": "Alcoholics Anonymous (1st Edition)",
-    "shortTitle": "Big Book (1st Ed.)",
-    "description": "The 1939 first edition of Alcoholics Anonymous. Public domain in the United States \u2014 AAWS did not renew the copyright.",
-    "copyright": "public-domain",
-    "displayMode": "full-text",
-    "contextWords": 15,
-    "linkTemplate": null,
-    "officialUrl": "https://www.aa.org/the-big-book",
-    "freeUrl": "https://anonpress.org/bb/",
-    "color": "#2C4A6E",
-    "sortOrder": 1,
-    "enabled": true
-  },
-  {
     "id": "big-book-2ed",
     "title": "Alcoholics Anonymous (2nd Edition)",
     "shortTitle": "Big Book (2nd Ed.)",
@@ -26,7 +11,7 @@
     "officialUrl": "https://www.aa.org/the-big-book",
     "freeUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf",
     "color": "#1A5276",
-    "sortOrder": 2,
+    "sortOrder": 1,
     "enabled": true
   },
   {
@@ -41,7 +26,7 @@
     "officialUrl": "https://www.aa.org/twelve-steps-twelve-traditions",
     "freeUrl": null,
     "color": "#7C5C3A",
-    "sortOrder": 3,
+    "sortOrder": 2,
     "enabled": true
   },
   {
@@ -56,7 +41,7 @@
     "officialUrl": "https://www.aa.org/literature",
     "freeUrl": null,
     "color": "#4A7C6E",
-    "sortOrder": 4,
+    "sortOrder": 3,
     "enabled": false
   },
   {
@@ -71,7 +56,7 @@
     "officialUrl": "https://www.aa.org/daily-reflections",
     "freeUrl": null,
     "color": "#C8902A",
-    "sortOrder": 5,
+    "sortOrder": 4,
     "enabled": true
   }
 ]

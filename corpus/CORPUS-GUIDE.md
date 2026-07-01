@@ -68,47 +68,9 @@ If only a scanned PDF exists, OCR cleanup is required before ingestion (see Part
 
 ## Part 3 — v1 Sources: Status & Acquisition
 
-### Source 1 — Big Book, 1st Edition
-**Registry ID:** `big-book-1ed`
-**Display mode:** `full-text`
-**Copyright status:** ✅ Public domain in the United States (copyright lapsed 1967)
+> **Big Book 1st Edition removed (v1.1):** The 1st edition corpus was removed pending a proper re-ingestion via the `ingest.py` pipeline. The 2nd edition (1955) is the active full-text Big Book source. When re-adding the 1st edition, source a clean plain-text from anonpress.org and run `ingest.py --input big-book-1ed.txt`. The 1939 text is confirmed public domain (copyright lapsed 1967).
 
-#### Where to get it
-The best clean digital text is at **Anonymous Press**: https://anonpress.org/bb/
-
-The text is presented as one HTML page per book page. The full chapter list is:
-- Ch. 1 Bill's Story — Page_1.htm
-- Ch. 2 There Is A Solution — Page_17.htm
-- Ch. 3 More About Alcoholism — Page_30.htm
-- Ch. 4 We Agnostics — Page_44.htm
-- Ch. 5 How It Works — Page_58.htm
-- Ch. 6 Into Action — Page_72.htm
-- Ch. 7 Working With Others — Page_89.htm
-- Ch. 8 To Wives — Page_104.htm
-- Ch. 9 The Family Afterward — Page_122.htm
-- Ch. 10 To Employers — Page_136.htm
-- Ch. 11 A Vision For You — Page_151.htm
-- Foreword — foreword.htm
-- The Doctor's Opinion — docsopin.htm
-- Doctor's Nightmare (Dr. Bob's story) — drbob.htm
-- Spiritual Experience appendix — Spiritualexperience.htm
-
-Also available as a full plain-text file via Internet Archive:
-https://archive.org/details/bigbookofalcohol0000smit
-(Download the .txt version if available; prefer this over scraping HTML pages)
-
-#### Acquisition process
-1. Download the plain text version from Internet Archive, **or**
-2. Scrape each chapter page from anonpress.org/bb/ (they have no stated objection to this for the public domain text — it is their explicit purpose)
-3. anonpress.org is a small volunteer site; be respectful — add a 1–2 second delay between requests if scraping, and do it once, saving the result locally
-
-#### What to verify
-- The anonpress text is the **1st edition** (164 pages of program text + original personal stories). Confirm it does not include 2nd/3rd/4th edition additions.
-- The "Acceptance" passage (page 417/449) is **not** in the 1st edition — it was added in the 3rd edition personal stories. Do not include it. Link to aa.org for that passage instead.
-
----
-
-### Source 2 — The Twelve Steps and Twelve Traditions (12&12)
+### Source 1 — The Twelve Steps and Twelve Traditions (12&12)
 **Registry ID:** `twelve-steps-traditions`
 **Display mode:** ⚠️ `snippet` until copyright verified — potentially `full-text`
 **Copyright status:** Free for public use, keep it to snippet. You may link to https://www.portlandeyeopener.com/AA-12-Steps-12-Traditions.pdf for information beyond snippets.
@@ -128,7 +90,7 @@ Use `snippet` mode (30-word excerpts) and link to:
 
 ---
 
-### Source 3 — The Twelve Traditions (standalone)
+### Source 2 — The Twelve Traditions (standalone)
 **Registry ID:** `twelve-traditions`
 **Display mode:** `full-text` (likely) — verify same as 12&12
 **Copyright status:** 🔍 NEEDS VERIFICATION — likely public domain
@@ -138,7 +100,7 @@ It is readily available online.
 
 ---
 
-### Source 4 — Daily Reflections
+### Source 3 — Daily Reflections
 **Registry ID:** `daily-reflections`
 **Display mode:** `concordance-only` (permanently — this is protected text)
 **Copyright status:** ❌ Protected © Alcoholics Anonymous World Services, Inc.
@@ -184,7 +146,7 @@ When DR results appear in search, the external link should go to the static URL:
 https://www.aa.org/daily-reflections
 ```
 
-**There is no date-specific deep link.** aa.org renders the current day's reflection server-side and does not expose a stable public URL for an arbitrary month/day (e.g. there is no working `/daily-reflections/en/june/28` style path). Do not attempt to construct one. The registry `linkTemplate` for `daily-reflections` is simply `https://www.aa.org/daily-reflections`, and `linkData` is not required for this source. Every DR result and the in-app `/reflection` view link to that single URL.
+**There is no date-specific deep link.** aa.org renders the current day's reflection server-side and does not expose a stable public URL for an arbitrary month/day. Do not attempt to construct one. The registry `linkTemplate` for `daily-reflections` is simply `https://www.aa.org/daily-reflections`. Every DR result and the reflection dashboard card link to that single URL. The `/reflection` route on basictexts.org is a client-side redirect to that URL — we do not display the full Daily Reflections text locally.
 
 ---
 
@@ -192,85 +154,116 @@ https://www.aa.org/daily-reflections
 
 Follow these steps for every new source, v1 or future.
 
+### Step 0 — Python dependency setup (one-time)
+
+The `ingest.py` pipeline requires Python 3.11+ and the following packages:
+
+```bash
+pip install -r corpus/scripts/requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+On Ubuntu/Debian, pyenchant also needs the system hunspell dictionary:
+```bash
+sudo apt-get install python3-enchant enchant-2 libenchant-2-dev hunspell-en-us
+```
+
+On macOS:
+```bash
+brew install enchant && pip install pyenchant
+```
+
 ### Step 1 — Evaluate copyright (Part 2 above)
 Do not proceed until you have documented the copyright basis in this file under the source's section. Add a note like:
 > "Copyright verified public domain: no renewal record found in Copyright Office database, searched [date]. Screenshotted and saved to /corpus/legal/[source-id]-copyright-check.png"
 
 ### Step 2 — Acquire the raw text
 Preferred formats in order:
-1. **Plain text (.txt)** — easiest to process, minimal cleanup
-2. **Clean HTML** — strip tags, preserve paragraph breaks
-3. **EPUB** — unzip and extract XHTML content files
-4. **PDF (text-based)** — use `pdftotext` (poppler) or `pdf-parse` npm package
-5. **PDF (scanned/image)** — requires OCR; use Tesseract or Adobe Acrobat; expect errors
+1. **PDF (text-based)** — the `ingest.py` pipeline handles PDF extraction natively via pdfplumber
+2. **Plain text (.txt)** — pass directly to `ingest.py --input` (skips PDF extraction stage)
+3. **Clean HTML / EPUB** — convert to .txt first, then use `--input .txt`
+4. **PDF (scanned/image)** — requires OCR pre-processing (Tesseract); save result as .txt
 
-Save the raw acquired file to `/corpus/raw/<source-id>.<ext>` and commit it. This preserves the exact source used for the corpus.
+Save the raw acquired file to `corpus/raw/<source-id>.<ext>` and commit it.
 
-### Step 3 — Clean the text
-Common issues to fix before structuring:
+### Step 3 — Create a chapter map JSON file
 
-| Issue | Fix |
-|---|---|
-| Page headers/footers repeated mid-text | Remove lines matching the header/footer pattern |
-| Hyphenated line breaks (`recov-\nery`) | Join: `recovery` |
-| Ligature characters (`ﬁ`, `ﬂ`) | Replace with `fi`, `fl` |
-| Smart quotes / curly apostrophes | Optionally normalize to straight quotes (or keep — either is fine) |
-| Multiple blank lines | Normalize to single paragraph breaks |
-| Chapter headings embedded in body text | Extract as metadata, remove from body |
-| Footnotes / endnotes | Remove or store separately — do not include in passage text |
-| OCR errors (common: `l` → `1`, `0` → `O`, `rn` → `m`) | Manual review of high-frequency words; spot-check 10–20 random passages |
+The chapter map tells the pipeline which page ranges belong to which chapter. It is required for accurate `chapterRef` assignment.
 
-Write a cleaning script in Node.js and save it to `/corpus/scripts/clean-<source-id>.js`. This makes the process repeatable if the source text is updated.
+Save the file as `corpus/raw/<source-id>-chapters.json`:
 
-### Step 4 — Structure into passages
+```json
+[
+  {
+    "chapterRef": "Chapter 5 — How It Works",
+    "title": "How It Works",
+    "startPage": 79,
+    "endPage": 92
+  },
+  ...
+]
+```
 
-A "passage" is the unit of text that appears in a search result. For most AA literature, a **paragraph** is the right granularity — long enough to give context, short enough to scan.
+`startPage` and `endPage` are **physical PDF page numbers** (1-based, as reported by pdfplumber), not printed book page numbers.
 
-Rules:
-- One paragraph = one passage
-- Minimum passage length: 20 words (discard shorter fragments — they are usually headers or section labels, which become `chapterRef` metadata instead)
-- Maximum passage length: no hard limit, but if a paragraph exceeds ~200 words consider splitting at a natural sentence boundary
-- Preserve paragraph order via the `sequence` field (integer, monotonically increasing per source)
+**Calibration workflow:** If you don't know the exact page numbers, run `ingest.py` without `--chapter-map` first (passages will get `chapterRef: "Unknown"`). Examine `pipeline-artifacts/<source-id>/<ts>/05-paragraphs.jsonl` to find the PDF page number where each chapter begins. Then create the chapter map and re-run.
 
-The structured output for each passage must conform to this schema:
+### Step 4 — Run the ingest pipeline
+
+```bash
+# From the repo root:
+python corpus/scripts/ingest.py \
+  --source-id <source-id> \
+  --input corpus/raw/<source-id>.pdf \
+  --chapter-map corpus/raw/<source-id>-chapters.json \
+  --output corpus/sources/<source-id>.json
+```
+
+For a plain-text input:
+```bash
+python corpus/scripts/ingest.py \
+  --source-id <source-id> \
+  --input corpus/raw/<source-id>.txt \
+  --chapter-map corpus/raw/<source-id>-chapters.json \
+  --output corpus/sources/<source-id>.json
+```
+
+Optional: if Stage 3 WARNING output shows uncaught running headers, create a strip-patterns file:
+```bash
+# corpus/raw/<source-id>-strip.json — array of regex strings
+["^ALCOHOLICS ANONYMOUS$", "^HOW IT WORKS$"]
+
+# Then re-run with:
+python corpus/scripts/ingest.py ... --strip-patterns corpus/raw/<source-id>-strip.json
+```
+
+**After each run, review:**
+- `pipeline-artifacts/<source-id>/<ts>/08-audit-report.txt` — flagged passages and vocabulary check
+- `pipeline-artifacts/<source-id>/<ts>/04-hyphen-decisions.log` — all hyphen repair decisions; spot-check the DEFAULT-rule joins listed in the audit report
+
+Each run is self-contained in a timestamped directory and never overwrites previous runs.
+
+**The passage schema produced by ingest.py:**
 
 ```json
 {
-  "id": "big-book-1ed-ch5-p001",
-  "sourceId": "big-book-1ed",
+  "id": "big-book-2ed-chapter-5-how-it-works-p0001",
+  "sourceId": "big-book-2ed",
   "title": "How It Works",
-  "sequence": 142,
+  "sequence": 1,
   "date": null,
-  "pageRef": "p.58",
+  "pageRef": "p.79",
   "chapterRef": "Chapter 5 — How It Works",
   "text": "Rarely have we seen a person fail who has thoroughly followed our path. Those who do not recover are people who cannot or will not completely give themselves to this simple program, usually men and women who are constitutionally incapable of being honest with themselves.",
   "linkData": null
 }
 ```
 
-**ID convention:** `<source-id>-<chapter-slug>-p<zero-padded-sequence>`
-Example: `big-book-1ed-ch5-p001`, `daily-reflections-jan-15`
-
-For Daily Reflections, the ID and linkData should encode the date:
-```json
-{
-  "id": "daily-reflections-jan-15",
-  "sourceId": "daily-reflections",
-  "title": "January 15",
-  "sequence": 15,
-  "date": "2000-01-15",
-  "pageRef": null,
-  "chapterRef": "January",
-  "text": "full text here — indexed but never displayed to user",
-  "linkData": { "month": "january", "day": "15" }
-}
-```
-
-Use year 2000 as the canonical year for DR dates (it is a leap year, so Feb 29 is valid).
-
-Write a structuring script in Node.js and save it to `/corpus/scripts/structure-<source-id>.js`. It should read the cleaned text file and output the structured JSON array to `/corpus/sources/<source-id>.json`.
+**Daily Reflections exception:** The DR source uses `parse_daily_reflections.py` (not `ingest.py`) because its schema requires `date: "MM-DD"` and a non-null `linkData` field that `ingest.py` does not produce. See Part 3, Source 3 for the DR ingestion process.
 
 ### Step 5 — Validate the structured JSON
+
+The `ingest.py` pipeline performs its own validation before writing the output file and exits with code 1 if validation fails. After the pipeline completes, also run:
 
 Before ingesting, run a validation pass:
 
@@ -284,7 +277,7 @@ Checks to perform:
 - [ ] For DR entries: all 366 dates present (Jan 1 – Dec 31 + Feb 29), no duplicates
 - [ ] Spot-check 20 random passages against the source text for accuracy
 
-A validation script should be committed to `/corpus/scripts/validate.js` and run as part of `pnpm run build:index`.
+`validate.js` is already committed and runs as part of `pnpm run build:index`.
 
 ### Step 6 — Update the source registry
 
@@ -292,29 +285,28 @@ Add the new source entry to `/corpus/sources.json`. All fields are required:
 
 ```json
 {
-  "id": "big-book-1ed",
-  "title": "Alcoholics Anonymous (1st Edition)",
-  "shortTitle": "Big Book",
-  "description": "The original 1939 text of Alcoholics Anonymous, in the public domain in the United States.",
+  "id": "big-book-2ed",
+  "title": "Alcoholics Anonymous (2nd Edition)",
+  "shortTitle": "Big Book (2nd Ed.)",
+  "description": "The 1955 second edition of Alcoholics Anonymous, public domain in the United States.",
   "copyright": "public-domain",
   "displayMode": "full-text",
-  "contextWords": 8,
+  "contextWords": 15,
   "linkTemplate": null,
-  "officialUrl": "https://www.aa.org/alcoholics-anonymous-big-book-4th-edition",
-  "freeUrl": "https://anonpress.org/bb/",
-  "color": "#2C4A6E",
+  "officialUrl": "https://www.aa.org/the-big-book",
+  "freeUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf",
+  "color": "#1A5276",
   "sortOrder": 1,
   "enabled": true
 }
 ```
 
-`sortOrder` controls the grouping order in search results. Use:
-- 1 — Big Book
-- 2 — 12 Steps
-- 3 — 12 Traditions
-- 4 — 12&12
-- 5 — Daily Reflections
-- 10+ — future sources (leaves room to insert between existing sources)
+`sortOrder` controls the grouping order in search results. Current assignments:
+- 1 — Big Book (2nd Edition)
+- 2 — 12&12
+- 3 — 12 Traditions (disabled until ingested)
+- 4 — Daily Reflections
+- 10+ — future sources (leaves room to insert between existing ones)
 
 ### Step 7 — Build the search index
 
@@ -410,36 +402,59 @@ These are candidates for v2+. Each needs its own copyright research.
 | Copyright Office catalog | Search copyright registrations and renewals | https://cocatalog.loc.gov |
 | Stanford Copyright Renewal DB | Searchable 1923–1963 renewal records | https://exhibits.stanford.edu/copyrightrenewals |
 | Internet Archive | Source texts, scans, plain text downloads | https://archive.org |
-| pdftotext (poppler) | Extract text from PDF | `brew install poppler` |
-| pdf-parse | Node.js PDF text extraction | `pnpm add pdf-parse` |
+| pdfplumber | Python PDF text extraction (used by ingest.py) | `pip install pdfplumber` |
+| ftfy | Python Unicode fixing library | `pip install ftfy` |
+| pyenchant | Python spellcheck (hyphen repair) | `pip install pyenchant` |
+| spaCy | Python NLP for sentence segmentation | `pip install spacy && python -m spacy download en_core_web_sm` |
+| pdftotext (poppler) | CLI PDF extraction (used by parse_daily_reflections.py) | `brew install poppler` / `apt install poppler-utils` |
 | Tesseract | OCR for scanned PDFs | https://tesseract-ocr.github.io |
-| htm (Node) | Lightweight HTML parser for scraping | `pnpm add node-html-parser` |
 | minisearch | Client-side FTS for offline index | https://lucaong.github.io/minisearch |
 
 ## Appendix B — Directory Structure
 
 ```
 /corpus/
-  sources.json                  ← source registry (one entry per source)
+  sources.json                          ← source registry (one entry per source)
+  CORPUS-GUIDE.md                       ← this file
+  synonyms.json                         ← synonym expansion rules
+  known-exceptions.json                 ← known-exception hints shown in search UI
   sources/
-    big-book-1ed.json           ← structured passage array
-    twelve-steps-traditions.json
-    twelve-traditions.json
-    daily-reflections.json
+    big-book-2ed.json                   ← structured passage array (ingest.py output)
+    twelve-steps-traditions.json        ← structured passage array (ingest.py output)
+    daily-reflections.json              ← structured passage array (parse_daily_reflections.py output)
   raw/
-    big-book-1ed.txt            ← raw acquired text, committed as-is
-    daily-reflections-scraped/  ← raw HTML pages, one per date
+    BigBookSecondEdition.pdf            ← raw PDF, committed as-is
+    AA-12-Steps-12-Traditions.pdf       ← raw PDF
+    AA-Daily-Reflections.pdf            ← raw PDF
+    big-book-2ed-chapters.json          ← chapter map for ingest.py (PDF page ranges)
+    twelve-steps-traditions-chapters.json
+    <source-id>-strip.json              ← optional: regex patterns to strip headers/footers
   scripts/
-    clean-big-book-1ed.js       ← cleaning script
-    structure-big-book-1ed.js   ← structuring script
-    clean-daily-reflections.js
-    structure-daily-reflections.js
-    validate.js                 ← runs across all corpus files
-    ingest.js                   ← loads corpus into D1
+    ingest.py                           ← primary ingestion pipeline (PDF/TXT → corpus JSON)
+    requirements.txt                    ← Python dependencies for ingest.py
+    parse_daily_reflections.py          ← DR-specific ingestion (date/linkData schema)
+    scan_raw_sources.py                 ← audits raw/ against the registry
+    build-index.mjs                     ← builds MiniSearch index from corpus/ sources
+    validate.js                         ← schema + integrity validation
+  pipeline-artifacts/
+    <source-id>/
+      <YYYYMMDD-HHMMSS>/
+        01-extracted.txt                ← Stage 1 output
+        02-normalized.txt               ← Stage 2 output
+        03-stripped.txt                 ← Stage 3 output
+        04-repaired.txt                 ← Stage 4 output
+        04-hyphen-decisions.log         ← all hyphen repair decisions
+        05-paragraphs.jsonl             ← Stage 5 output
+        05-discarded-fragments.log      ← paragraphs discarded (<20 words)
+        06-chaptered.jsonl              ← Stage 6 output
+        07-final.json                   ← Stage 7 output (same content as sources/<id>.json)
+        08-audit-report.txt             ← passage flags + default-join hyphens
+        pipeline-run.log                ← full pipeline log with timestamps
   legal/
-    big-book-1ed-copyright-check.png   ← screenshot of Copyright Office search
-    README.md                          ← one-line note per source on legal basis
+    README.md                           ← one-line note per source on legal basis
 ```
+
+> `pipeline-artifacts/` is gitignored — it is a local audit trail, not a build artifact.
 
 ---
 

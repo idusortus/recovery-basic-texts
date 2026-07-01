@@ -1,0 +1,6 @@
+[
+  "^[A-Z]( [A-Z])+$",
+  "^\\*In 1954, the name of the Alcoholic Foundation",
+  "^changed to the General Service Board of Alcoholics Anonymous",
+  "^Inc\\., and the Foundation office is now the General Service Office"
+]

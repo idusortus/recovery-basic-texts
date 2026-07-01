@@ -1,0 +1,81 @@
+[
+  {
+    "_note": "CALIBRATION REQUIRED — These page numbers are derived from the known book-page structure (offset +21: PDF page = book page + 21) and a confirmed total of 200 PDF pages. Verify by running ingest.py without --chapter-map first, then checking 05-paragraphs.jsonl to confirm the first passage of each chapter appears at the expected PDF page. Adjust startPage/endPage values as needed before the production run.",
+    "chapterRef": "Front Matter",
+    "title": "Front Matter",
+    "startPage": 1,
+    "endPage": 21
+  },
+  {
+    "chapterRef": "Chapter 1 — Bill's Story",
+    "title": "Bill's Story",
+    "startPage": 22,
+    "endPage": 37
+  },
+  {
+    "chapterRef": "Chapter 2 — There Is a Solution",
+    "title": "There Is a Solution",
+    "startPage": 38,
+    "endPage": 50
+  },
+  {
+    "chapterRef": "Chapter 3 — More About Alcoholism",
+    "title": "More About Alcoholism",
+    "startPage": 51,
+    "endPage": 64
+  },
+  {
+    "chapterRef": "Chapter 4 — We Agnostics",
+    "title": "We Agnostics",
+    "startPage": 65,
+    "endPage": 78
+  },
+  {
+    "chapterRef": "Chapter 5 — How It Works",
+    "title": "How It Works",
+    "startPage": 79,
+    "endPage": 92
+  },
+  {
+    "chapterRef": "Chapter 6 — Into Action",
+    "title": "Into Action",
+    "startPage": 93,
+    "endPage": 109
+  },
+  {
+    "chapterRef": "Chapter 7 — Working With Others",
+    "title": "Working With Others",
+    "startPage": 110,
+    "endPage": 124
+  },
+  {
+    "chapterRef": "Chapter 8 — To Wives",
+    "title": "To Wives",
+    "startPage": 125,
+    "endPage": 142
+  },
+  {
+    "chapterRef": "Chapter 9 — The Family Afterward",
+    "title": "The Family Afterward",
+    "startPage": 143,
+    "endPage": 156
+  },
+  {
+    "chapterRef": "Chapter 10 — To Employers",
+    "title": "To Employers",
+    "startPage": 157,
+    "endPage": 171
+  },
+  {
+    "chapterRef": "Chapter 11 — A Vision for You",
+    "title": "A Vision for You",
+    "startPage": 172,
+    "endPage": 185
+  },
+  {
+    "chapterRef": "Appendices",
+    "title": "Appendices",
+    "startPage": 186,
+    "endPage": 200
+  }
+]

@@ -1,0 +1,153 @@
+[
+  {
+    "_note": "CALIBRATION REQUIRED — Page estimates assume ~10 pages per Step essay and ~5 pages per Tradition essay across 194 total PDF pages. Run ingest.py WITHOUT --chapter-map first and examine pipeline-artifacts/<ts>/05-paragraphs.jsonl to find the page numbers where each Step/Tradition heading appears. Adjust startPage/endPage values accordingly before the production run.",
+    "chapterRef": "Front Matter",
+    "title": "Front Matter",
+    "startPage": 1,
+    "endPage": 5
+  },
+  {
+    "chapterRef": "Step One",
+    "title": "Step One",
+    "startPage": 6,
+    "endPage": 17
+  },
+  {
+    "chapterRef": "Step Two",
+    "title": "Step Two",
+    "startPage": 18,
+    "endPage": 29
+  },
+  {
+    "chapterRef": "Step Three",
+    "title": "Step Three",
+    "startPage": 30,
+    "endPage": 42
+  },
+  {
+    "chapterRef": "Step Four",
+    "title": "Step Four",
+    "startPage": 43,
+    "endPage": 57
+  },
+  {
+    "chapterRef": "Step Five",
+    "title": "Step Five",
+    "startPage": 58,
+    "endPage": 67
+  },
+  {
+    "chapterRef": "Step Six",
+    "title": "Step Six",
+    "startPage": 68,
+    "endPage": 74
+  },
+  {
+    "chapterRef": "Step Seven",
+    "title": "Step Seven",
+    "startPage": 75,
+    "endPage": 82
+  },
+  {
+    "chapterRef": "Step Eight",
+    "title": "Step Eight",
+    "startPage": 83,
+    "endPage": 93
+  },
+  {
+    "chapterRef": "Step Nine",
+    "title": "Step Nine",
+    "startPage": 94,
+    "endPage": 108
+  },
+  {
+    "chapterRef": "Step Ten",
+    "title": "Step Ten",
+    "startPage": 109,
+    "endPage": 118
+  },
+  {
+    "chapterRef": "Step Eleven",
+    "title": "Step Eleven",
+    "startPage": 119,
+    "endPage": 130
+  },
+  {
+    "chapterRef": "Step Twelve",
+    "title": "Step Twelve",
+    "startPage": 131,
+    "endPage": 148
+  },
+  {
+    "chapterRef": "Tradition One",
+    "title": "Tradition One",
+    "startPage": 149,
+    "endPage": 153
+  },
+  {
+    "chapterRef": "Tradition Two",
+    "title": "Tradition Two",
+    "startPage": 154,
+    "endPage": 157
+  },
+  {
+    "chapterRef": "Tradition Three",
+    "title": "Tradition Three",
+    "startPage": 158,
+    "endPage": 161
+  },
+  {
+    "chapterRef": "Tradition Four",
+    "title": "Tradition Four",
+    "startPage": 162,
+    "endPage": 165
+  },
+  {
+    "chapterRef": "Tradition Five",
+    "title": "Tradition Five",
+    "startPage": 166,
+    "endPage": 169
+  },
+  {
+    "chapterRef": "Tradition Six",
+    "title": "Tradition Six",
+    "startPage": 170,
+    "endPage": 173
+  },
+  {
+    "chapterRef": "Tradition Seven",
+    "title": "Tradition Seven",
+    "startPage": 174,
+    "endPage": 177
+  },
+  {
+    "chapterRef": "Tradition Eight",
+    "title": "Tradition Eight",
+    "startPage": 178,
+    "endPage": 181
+  },
+  {
+    "chapterRef": "Tradition Nine",
+    "title": "Tradition Nine",
+    "startPage": 182,
+    "endPage": 186
+  },
+  {
+    "chapterRef": "Tradition Ten",
+    "title": "Tradition Ten",
+    "startPage": 187,
+    "endPage": 189
+  },
+  {
+    "chapterRef": "Tradition Eleven",
+    "title": "Tradition Eleven",
+    "startPage": 190,
+    "endPage": 192
+  },
+  {
+    "chapterRef": "Tradition Twelve",
+    "title": "Tradition Twelve",
+    "startPage": 193,
+    "endPage": 194
+  }
+]

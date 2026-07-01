@@ -339,15 +339,10 @@
 					</p>
 					<div class="flex items-center justify-between mt-auto pt-3 border-t border-stone-100 dark:border-slate-800">
 						<span class="text-xs text-stone-400 dark:text-slate-500">Ref: {formatReflectionDate(todayMmDd)}</span>
-						<div class="flex items-center gap-3">
-							<ExternalLink href="https://www.aa.org/daily-reflections"
-								class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-amber-400 transition-colors">
-								aa.org →
-							</ExternalLink>
-							<a href="/reflection" class="text-xs font-medium text-navy dark:text-amber-400 hover:underline transition-colors">
-								Read full reflection →
-							</a>
-						</div>
+						<ExternalLink href="https://www.aa.org/daily-reflections"
+							class="text-xs font-medium text-navy dark:text-amber-400 hover:underline transition-colors">
+							Read full reflection at aa.org →
+						</ExternalLink>
 					</div>
 
 				{:else}

@@ -52,3 +52,4 @@ Thumbs.db
 *.swp
 .eslintcache
 .stylelintcache
+pipeline-artifacts/

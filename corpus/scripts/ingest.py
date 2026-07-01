@@ -126,7 +126,17 @@ _DEC_DEFAULT    = "default join"
 # Regex: alphabetic word ending in hyphen at end-of-line, continuation follows.
 # Using [A-Za-z] rather than \w to exclude digits/underscores — genuine
 # typographic hyphenation only breaks alphabetic words.
-_HYPHEN_EOL_RE = re.compile(r"([A-Za-z]+)-\n([A-Za-z]+)")
+# [ \t]* after \n handles indented continuations from pdfplumber layout=True
+# (e.g. "unfortu-\n          nates" — the continuation has leading spaces).
+_HYPHEN_EOL_RE = re.compile(r"([A-Za-z]+)-\n[ \t]*([A-Za-z]+)")
+
+# Regex for paragraph-boundary hyphenation: word-\n\n...continuation
+# pdfplumber layout=True sometimes emits a double-newline (paragraph break)
+# at a visual line boundary, splitting a word across what looks like two
+# paragraphs.  The continuation MUST start lowercase (it's a word fragment,
+# not a new sentence).  This is applied as a pre-pass in Stage 4 before the
+# main single-newline pass.
+_PARA_HYPHEN_RE = re.compile(r"([A-Za-z]+)-\n{2,}[ \t]*([a-z]+)")
 
 
 # ---------------------------------------------------------------------------
@@ -300,16 +310,29 @@ def stage_1_extract_pdf(
     with pdfplumber.open(str(input_path)) as pdf:
         total_pages = len(pdf.pages)
         for page in pdf.pages:
-            raw = page.extract_text(layout=True) or ""
+            # layout=False (the default) gives clean single-newline-per-line text
+            # in reading order without the extra whitespace padding that layout=True
+            # inserts.  layout=True was tested and found to emit double-newlines at
+            # EVERY visual line break (not just paragraph boundaries), which breaks
+            # Stage 5's \n\n paragraph detection and produces hundreds of <20-word
+            # fragments.  layout=False means each page becomes one text block with
+            # single \n between lines; Stage 4 joins all hyphenated line breaks;
+            # Stage 5 treats each page block as a passage unit.
+            raw = page.extract_text(layout=False) or ""
             page_num = page.page_number  # 1-based in pdfplumber
 
             # Normalize CRLF from PDF extraction
             raw = raw.replace("\r\n", "\n").replace("\r", "\n")
 
-            # Strip trailing whitespace from each line, but preserve blank
-            # lines because they may encode paragraph breaks within the page.
+            # Strip trailing whitespace from each line.
             lines = [ln.rstrip() for ln in raw.split("\n")]
-            page_text = PAGE_MARKER_FMT.format(page=page_num) + "\n" + "\n".join(lines)
+
+            # IMPORTANT: the page marker is separated from the page content with
+            # \n\n (not \n) so that Stage 4's paragraph-block splitter treats the
+            # marker as a standalone block.  If we used a single \n here, the
+            # marker would merge with the page content into one block and be
+            # collapsed into the passage text by Stage 4.
+            page_text = PAGE_MARKER_FMT.format(page=page_num) + "\n\n" + "\n".join(lines)
             page_segments.append(page_text)
             total_chars += len(page_text)
 
@@ -608,25 +631,28 @@ def stage_4_repair_hyphens(
     """
     Repair PDF typesetting hyphens that break a word across two lines.
 
-    Detection pattern: ([A-Za-z]+)-\\n([A-Za-z]+)
-    Decision logic (first match wins):
+    Two patterns are handled (both observed from pdfplumber layout=True):
+
+    Type A — single-newline with optional indentation:
+      "unfortu-\n          nates"  →  _HYPHEN_EOL_RE  →  "unfortunates"
+      pdfplumber preserves the raw line break and indentation.
+
+    Type B — double-newline (paragraph-boundary split):
+      "be-\n\n          ing"  →  _PARA_HYPHEN_RE (pre-pass)  →  "being"
+      pdfplumber layout=True sometimes creates a visual paragraph break at a
+      line boundary, putting the word end in one block and the continuation
+      in the next.  The continuation is identified by starting with a lowercase
+      letter (word fragments never start uppercase).
+
+    Decision logic (first match wins for both types):
       Rule 1: hyphenated form is in CUSTOM_COMPOUNDS  →  keep hyphenated
       Rule 2: joined form is in en_US dictionary       →  join (layout artifact)
       Rule 3: hyphenated form is in en_US dictionary   →  keep hyphenated
       Rule 4: either part has no vowels                →  keep hyphenated
-                                                           (abbreviation fragment)
       Rule 5: default                                  →  join
 
     Rule 5 is the highest-risk decision.  All Rule-5 joins are listed in the
     audit report for spot-checking.
-
-    If pyenchant's en_US dictionary cannot be loaded (common on Linux without
-    hunspell-en), rules 2 and 3 are skipped and a clear warning is printed.
-    The pipeline continues with custom-compound-only protection.
-
-    After all hyphen decisions are made this stage also performs the deferred
-    single-newline collapse: within each paragraph block, remaining bare \\n
-    characters (i.e. not paragraph boundaries) are joined to spaces.
     """
     _banner("STAGE 4 — Hyphen repair")
 
@@ -691,7 +717,7 @@ def stage_4_repair_hyphens(
         # This is the least certain rule; all Rule-5 joins appear in the audit.
         return joined, _DEC_DEFAULT
 
-    def _replace(m: re.Match) -> str:
+    def _replace(m: re.Match, cross_para: bool = False) -> str:
         counts["total"] += 1
         left, right      = m.group(1), m.group(2)
         replacement, dec = _decide(left, right)
@@ -705,16 +731,25 @@ def stage_4_repair_hyphens(
             counts["defaulted"] += 1
 
         # Log uses literal \n (two chars) so the log file is grep-friendly
+        sep  = "\\n\\n" if cross_para else "\\n"
         verb = "JOINED    " if is_join else "KEPT      "
         log_entries.append(
-            f'{verb} "{left}-\\n{right}"'
+            f'{verb} "{left}-{sep}{right}"'
             f'  →  "{replacement}"'
             f'  [{dec}]'
         )
         return replacement
 
-    # --- First pass: repair hyphenated line-breaks ---
-    repaired = _HYPHEN_EOL_RE.sub(_replace, text)
+    def _replace_para(m: re.Match) -> str:
+        return _replace(m, cross_para=True)
+
+    # --- Pre-pass: paragraph-boundary hyphens (Type B: word-\n\nword) ---
+    # Must run BEFORE the main pass so that the double-newlines that bridge
+    # the split are collapsed first; otherwise the main pass would miss them.
+    repaired = _PARA_HYPHEN_RE.sub(_replace_para, text)
+
+    # --- Main pass: single-newline hyphens (Type A: word-\n   word) ---
+    repaired = _HYPHEN_EOL_RE.sub(_replace, repaired)
 
     # --- Second pass: deferred single-newline collapse ---
     # Split on 2+ consecutive newlines to preserve paragraph boundaries.

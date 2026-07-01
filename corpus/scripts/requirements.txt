@@ -1,0 +1,14 @@
+# Python dependencies for corpus/scripts/ingest.py
+# Install with:  pip install -r corpus/scripts/requirements.txt
+# Then download the spaCy model:  python -m spacy download en_core_web_sm
+#
+# On Ubuntu/Debian, pyenchant requires the hunspell English dictionary:
+#   sudo apt-get install python3-enchant enchant-2 libenchant-2-dev hunspell-en-us
+# On macOS:
+#   brew install enchant && pip install pyenchant
+
+pdfplumber>=0.11
+ftfy>=6.2
+pyenchant>=3.2
+spacy>=3.7
+click>=8.0  # required by spacy CLI (not always pulled in transitively)
