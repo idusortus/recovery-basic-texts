@@ -12,7 +12,14 @@
     "freeUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf",
     "color": "#1A5276",
     "sortOrder": 1,
-    "enabled": true
+    "enabled": true,
+    "edition": {
+      "edition": "2nd",
+      "year": 1955,
+      "publisher": "Alcoholics Anonymous World Services, Inc.",
+      "isbn": null,
+      "referenceUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf"
+    }
   },
   {
     "id": "twelve-steps-traditions",
@@ -27,7 +34,8 @@
     "freeUrl": null,
     "color": "#7C5C3A",
     "sortOrder": 2,
-    "enabled": true
+    "enabled": true,
+    "edition": null
   },
   {
     "id": "twelve-traditions",
@@ -42,7 +50,8 @@
     "freeUrl": null,
     "color": "#4A7C6E",
     "sortOrder": 3,
-    "enabled": false
+    "enabled": false,
+    "edition": null
   },
   {
     "id": "daily-reflections",
@@ -57,6 +66,7 @@
     "freeUrl": null,
     "color": "#C8902A",
     "sortOrder": 4,
-    "enabled": true
+    "enabled": true,
+    "edition": null
   }
 ]

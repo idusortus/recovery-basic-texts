@@ -53,3 +53,7 @@ Thumbs.db
 .eslintcache
 .stylelintcache
 pipeline-artifacts/
+
+# Nested repos / Copilot worktrees — never track these as submodules
+recovery-basic-texts/
+copilot-worktrees/

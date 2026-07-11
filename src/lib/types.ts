@@ -31,6 +31,57 @@ export interface Source {
 	sortOrder: number;
 	/** false = indexed but not shown (staged rollout). */
 	enabled: boolean;
+	/** Edition provenance — required when a pagemap exists for this source. */
+	edition?: SourceEdition | null;
+}
+
+// ─── Corpus locator and pagemap ───────────────────────────────────────────────
+
+/** Structural position of a passage within its source edition. */
+export interface PassageLocator {
+	/** chapterRef value — machine-stable, used for pagemap lookups. */
+	chapter: string;
+	/** Printed chapter title as it appears in the book. */
+	chapterTitle: string;
+	/** Printed page number as an integer; null for unnumbered front matter. */
+	printedPage: number | null;
+	/** 0-based paragraph index within the chapter/section. */
+	paragraphIndex: number;
+}
+
+/** One structural anchor entry in a source pagemap. */
+export interface PageMapEntry {
+	/** Corpus pageRef value at this chapter boundary (e.g. "p.22"). */
+	corpusPageRef: string;
+	/** Printed page number per the book's printed pagination; null for unnumbered pages. */
+	printedPage: number | null;
+	/** chapterRef value in the corpus at this boundary. */
+	chapter: string;
+	/** First few words of the opening passage — used for anchor verification. */
+	anchor: string;
+}
+
+/** Per-source artifact mapping corpus page refs to printed pages and chapter anchors. */
+export interface PageMap {
+	/** Matches Source.id. */
+	sourceId: string;
+	/** Human-readable edition/printing reference this pagemap was verified against. */
+	editionRef: string;
+	/** ISO timestamp when this pagemap was last verified. */
+	builtAt: string;
+	entries: PageMapEntry[];
+}
+
+/** Edition provenance for a source — required for sources that have a pagemap. */
+export interface SourceEdition {
+	/** Human-readable edition label, e.g. "2nd". */
+	edition: string;
+	/** Year of first printing for this edition. */
+	year: number;
+	publisher: string;
+	isbn?: string | null;
+	/** URL of the reference PDF/text used for citation verification. */
+	referenceUrl?: string | null;
 }
 
 // ─── Corpus passages ─────────────────────────────────────────────────────────
@@ -54,6 +105,12 @@ export interface Passage {
 	text: string;
 	/** Key/value pairs interpolated into linkTemplate. */
 	linkData: Record<string, string> | null;
+	/** Structural locator for citation and pagemap verification. */
+	locator?: PassageLocator | null;
+	/** Human-readable citation string, e.g. "Alcoholics Anonymous (2nd Ed.), p. 58, ¶2". */
+	citation?: string | null;
+	/** SHA-1 hex digest of the normalised passage text (lower-cased, whitespace-collapsed). */
+	checksum?: string | null;
 }
 
 /** Lookup map returned by build-index — keyed on passage id. */

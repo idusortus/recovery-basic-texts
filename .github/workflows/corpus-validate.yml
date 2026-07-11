@@ -1,0 +1,37 @@
+name: Corpus validation
+
+on:
+  push:
+    paths:
+      - 'corpus/**'
+      - 'src/lib/types.ts'
+  pull_request:
+    paths:
+      - 'corpus/**'
+      - 'src/lib/types.ts'
+
+jobs:
+  validate:
+    name: Validate corpus schema and citations
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate corpus schema
+        run: node corpus/scripts/validate.js
+
+      - name: Verify citations and pagemaps
+        run: node corpus/scripts/verify-citations.mjs

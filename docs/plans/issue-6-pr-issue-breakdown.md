@@ -169,9 +169,9 @@ These are tasks an LLM cannot safely finalize without maintainer decisions or ex
 **Suggested owner:** Maintainer
 
 **Body (checklist):**
-- [ ] Confirm D1 is acceptable despite PRD v1 "no DB" note, or approve PRD amendment.
-- [ ] Confirm rollout policy (feature flag duration, cutover criteria, rollback plan).
-- [ ] Confirm whether MiniSearch should be fully removed after PR 4.
+- [X] Confirm D1 is acceptable despite PRD v1 "no DB" note, or approve PRD amendment.
+- [X] Confirm rollout policy (feature flag duration, cutover criteria, rollback plan).
+- [X] Confirm whether MiniSearch should be fully removed after PR 4.
 
 ### Issue H2 — Source edition provenance + pagemap references
 

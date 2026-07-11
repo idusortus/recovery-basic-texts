@@ -1,0 +1,43 @@
+{
+  "sourceId": "big-book-2ed",
+  "editionRef": "Alcoholics Anonymous, 2nd Edition (1955), Alcoholics Anonymous World Services, Inc.",
+  "builtAt": "2026-07-11T00:00:00.000Z",
+  "entries": [
+    {
+      "corpusPageRef": "p.1",
+      "printedPage": null,
+      "chapter": "Front Matter",
+      "anchor": "ALCOHOLICS ANONYMOUS The Story of"
+    },
+    {
+      "corpusPageRef": "p.22",
+      "printedPage": 1,
+      "chapter": "Chapter 1 — Bill's Story",
+      "anchor": "Chapter 1 BILL'S STORY WAR FEVER"
+    },
+    {
+      "corpusPageRef": "p.38",
+      "printedPage": 17,
+      "chapter": "Chapter 2 — There Is a Solution",
+      "anchor": "Chapter 2 THERE IS A SOLUTION WE, OF ALCOHOLICS ANONYMOUS"
+    },
+    {
+      "corpusPageRef": "p.51",
+      "printedPage": 30,
+      "chapter": "Chapter 3 — More About Alcoholism",
+      "anchor": "Chapter 3 MORE ABOUT ALCOHOLISM MOST OF US"
+    },
+    {
+      "corpusPageRef": "p.65",
+      "printedPage": 44,
+      "chapter": "Chapter 4 — We Agnostics",
+      "anchor": "Chapter 4 WE AGNOSTICS IN THE PRECEDING chapters"
+    },
+    {
+      "corpusPageRef": "p.79",
+      "printedPage": 58,
+      "chapter": "Chapter 5 — How It Works",
+      "anchor": "Chapter 5 HOW IT WORKS Rarely have we seen"
+    }
+  ]
+}

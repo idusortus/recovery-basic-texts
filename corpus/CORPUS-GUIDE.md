@@ -301,6 +301,24 @@ Add the new source entry to `/corpus/sources.json`. All fields are required:
 }
 ```
 
+For sources where a pagemap has been created (see Step 6.5 below), also add an `edition` field:
+
+```json
+{
+  "id": "big-book-2ed",
+  ...
+  "edition": {
+    "edition": "2nd",
+    "year": 1955,
+    "publisher": "Alcoholics Anonymous World Services, Inc.",
+    "isbn": null,
+    "referenceUrl": "https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf"
+  }
+}
+```
+
+The `edition` field is **required** whenever a `<source-id>.pagemap.json` file exists for that source. Corpus validation will fail if a pagemap is present but `edition` is null.
+
 `sortOrder` controls the grouping order in search results. Current assignments:
 - 1 — Big Book (2nd Edition)
 - 2 — 12&12
@@ -308,11 +326,81 @@ Add the new source entry to `/corpus/sources.json`. All fields are required:
 - 4 — Daily Reflections
 - 10+ — future sources (leaves room to insert between existing ones)
 
+### Step 6.5 — Pagemap and citation verification (optional, strongly recommended)
+
+A **pagemap** (`corpus/sources/<source-id>.pagemap.json`) maps corpus `pageRef` values to printed book page numbers and verifies chapter anchors. It is the structural integrity layer that allows CI to detect corpus corruption or edition mismatches.
+
+**When to add a pagemap:**
+- When the source is a book with numbered pages (Big Book, 12&12, etc.)
+- When you want CI to verify that chapter boundaries are correct
+- Required before adding `locator`/`citation`/`checksum` fields to passages
+
+**Pagemap format:**
+
+```json
+{
+  "sourceId": "big-book-2ed",
+  "editionRef": "Alcoholics Anonymous, 2nd Edition (1955), Alcoholics Anonymous World Services, Inc.",
+  "builtAt": "2026-07-11T00:00:00.000Z",
+  "entries": [
+    {
+      "corpusPageRef": "p.22",
+      "printedPage": 1,
+      "chapter": "Chapter 1 — Bill's Story",
+      "anchor": "Chapter 1 BILL'S STORY WAR FEVER"
+    }
+  ]
+}
+```
+
+- `corpusPageRef` — the `pageRef` value in the corpus JSON (e.g. `"p.22"`) for the first passage of this chapter
+- `printedPage` — the printed page number from the book's own pagination (null for unnumbered front matter)
+- `chapter` — must exactly match the `chapterRef` value used in the corpus JSON
+- `anchor` — first few words of the passage text; the verification script checks the passage starts with this text
+
+**How to build a pagemap:**
+1. Identify the first passage of each major chapter in the corpus JSON.
+2. Note its `pageRef` and `chapterRef` values.
+3. Cross-reference the printed page number from the book's table of contents or physical copy.
+4. Copy the first ~8 words of the passage `text` as the `anchor`.
+5. Run `node corpus/scripts/verify-citations.mjs <source-id>` to confirm it passes.
+
+**Passage-level integrity fields:**
+
+Passages may optionally include `locator`, `citation`, and `checksum` fields for stronger integrity. These are not required by default but will be validated when present:
+
+```json
+{
+  "id": "big-book-2ed-chapter-5-how-it-works-p0001",
+  ...
+  "locator": {
+    "chapter": "Chapter 5 — How It Works",
+    "chapterTitle": "How It Works",
+    "printedPage": 58,
+    "paragraphIndex": 0
+  },
+  "citation": "Alcoholics Anonymous (2nd Ed.), p. 58, ¶1",
+  "checksum": "a3f1c2b4e5d6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+}
+```
+
+`checksum` is a SHA-1 hex digest of the passage text after normalisation (lower-cased, whitespace collapsed). To compute:
+
+```js
+import { createHash } from 'node:crypto';
+const checksum = createHash('sha1')
+  .update(text.toLowerCase().replace(/\s+/g, ' ').trim(), 'utf-8')
+  .digest('hex');
+```
+
 ### Step 7 — Build the search index
 
 ```bash
-# Validate all corpus files
+# Validate all corpus files (schema + pagemap integrity)
 node corpus/scripts/validate.js
+
+# Verify pagemaps and passage checksums
+node corpus/scripts/verify-citations.mjs
 
 # Build the prebuilt minisearch index from all corpus files
 pnpm run build:index

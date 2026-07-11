@@ -8,6 +8,8 @@
     "build": "node corpus/scripts/build-index.mjs && vite build",
     "build:app": "vite build",
     "build:index": "node corpus/scripts/build-index.mjs",
+    "validate:corpus": "node corpus/scripts/validate.js",
+    "verify:citations": "node corpus/scripts/verify-citations.mjs",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
