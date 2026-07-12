@@ -596,7 +596,11 @@ function _searchByPhrase(
 		const source = getSourceById(passage.sourceId);
 		if (!source) continue;
 
-		const kwic = buildKwic(passage.text, rawQuery, source.displayMode, source.contextWords);
+		// Wrap rawQuery in quotes so buildKwic treats it as a phrase:
+		// - findMatchingSentenceIndex locates the sentence containing the adjacent phrase
+		// - highlightAll marks the entire phrase as a contiguous <mark> span
+		const phraseQuery = `"${rawQuery}"`;
+		const kwic = buildKwic(passage.text, phraseQuery, source.displayMode, source.contextWords);
 		const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
 		const result: SearchResult = {
 			passage, source, kwic, citation,

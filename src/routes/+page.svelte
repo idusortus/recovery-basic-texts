@@ -260,7 +260,13 @@
 			<!-- Exact phrase mode toggle -->
 			<button
 				type="button"
-				onclick={() => { phraseMode = !phraseMode; runSearch(debouncedQuery); }}
+				onclick={() => {
+					phraseMode = !phraseMode;
+					// Sync debouncedQuery with current input and run immediately
+					if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+					debouncedQuery = query;
+					runSearch(query);
+				}}
 				aria-pressed={phraseMode}
 				aria-label={phraseMode ? 'Exact phrase mode on — click to switch to word match' : 'Word match mode — click to search exact phrase'}
 				class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
@@ -489,13 +495,23 @@
 						No results for <strong>"{debouncedQuery}"</strong>
 					</p>
 					<p class="text-stone-400 dark:text-slate-500 text-sm">
-						Try different keywords, or check spelling. Quoted phrases require an exact match.
+						{#if phraseMode}
+							No passages contain the exact phrase <strong>"{debouncedQuery}"</strong>. Try turning off Exact phrase mode to search for individual words.
+						{:else}
+							Try different keywords, or check spelling. Quoted phrases require an exact match.
+						{/if}
 					</p>
 				</div>
 			{:else if results.length > 0}
 				<p class="text-stone-400 dark:text-slate-500 text-sm mb-6" aria-live="polite" aria-atomic="true">
 					{totalCount} result{totalCount === 1 ? '' : 's'} for
 					<strong class="text-stone-600 dark:text-slate-300">"{debouncedQuery}"</strong>
+					{#if phraseMode}
+						<span class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+							bg-navy/10 text-navy dark:bg-amber-400/20 dark:text-amber-300 border border-navy/20 dark:border-amber-400/30">
+							<span aria-hidden="true" class="font-mono">""</span> exact phrase
+						</span>
+					{/if}
 				</p>
 
 				{#each results as group (group.source.id)}
