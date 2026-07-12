@@ -176,3 +176,92 @@ export function buildCitation(
 	if (pageRef) parts.push(`p.${pageRef.replace(/^p\.?/, '')}`);
 	return `${text}\n\n— ${parts.join(', ')}`;
 }
+
+// ─── Offset-based KWIC (concordance path) ─────────────────────────────────────
+
+/** Merge overlapping or adjacent [start, end) pairs. Input must be sorted by start. */
+function mergeOffsets(sorted: Array<[number, number]>): Array<[number, number]> {
+	const result: Array<[number, number]> = [];
+	for (const [s, e] of sorted) {
+		if (result.length === 0 || s >= result[result.length - 1][1]) {
+			result.push([s, e]);
+		} else {
+			result[result.length - 1][1] = Math.max(result[result.length - 1][1], e);
+		}
+	}
+	return result;
+}
+
+/** Highlight exact character ranges in `text` with <mark> tags (HTML-safe). */
+function highlightByOffsets(text: string, offsets: Array<[number, number]>): string {
+	let html = '';
+	let pos = 0;
+	for (const [s, e] of offsets) {
+		if (s > pos) html += escapeHtml(text.slice(pos, s));
+		html += `<mark><span class="sr-only">highlighted: </span>${escapeHtml(text.slice(s, e))}</mark>`;
+		pos = e;
+	}
+	if (pos < text.length) html += escapeHtml(text.slice(pos));
+	return html;
+}
+
+/**
+ * Build a KWIC snippet using exact character offsets from the concordance index.
+ *
+ * Unlike `buildKwic()`, this never uses regex matching — it highlights the exact
+ * characters that were indexed. Zero false positives; zero missed highlights.
+ *
+ * - `full-text`: entire passage, all occurrences highlighted.
+ * - `concordance-only` / `snippet`: `contextWords` words each side of the first
+ *   match, with ellipsis prefix/suffix.
+ */
+export function buildKwicFromOffsets(
+	text: string,
+	offsets: Array<[number, number]>,
+	displayMode: DisplayMode,
+	contextWords: number
+): string {
+	if (offsets.length === 0) return escapeHtml(text);
+
+	const sorted = [...offsets].sort((a, b) => a[0] - b[0]);
+	const merged = mergeOffsets(sorted);
+
+	if (displayMode === 'full-text') {
+		return highlightByOffsets(text, merged);
+	}
+
+	// Concordance-only / snippet: clip contextWords words around the first match
+	const [matchStart] = merged[0];
+
+	// Build word-token list with cumulative character positions
+	const tokens = text.split(/(\s+)/);
+	type WordToken = { start: number; end: number };
+	const wordTokens: WordToken[] = [];
+	let charPos = 0;
+	for (const tok of tokens) {
+		const end = charPos + tok.length;
+		if (tok.trim()) wordTokens.push({ start: charPos, end });
+		charPos = end;
+	}
+	if (wordTokens.length === 0) return escapeHtml(text);
+
+	// Find the word containing matchStart
+	let matchWordIdx = wordTokens.findIndex((t) => t.start <= matchStart && matchStart < t.end);
+	if (matchWordIdx === -1) matchWordIdx = 0;
+
+	const fromIdx = Math.max(0, matchWordIdx - contextWords);
+	const toIdx = Math.min(wordTokens.length - 1, matchWordIdx + contextWords);
+
+	const clipStart = wordTokens[fromIdx].start;
+	const clipEnd = wordTokens[toIdx].end;
+
+	const prefix = fromIdx > 0 ? '… ' : '';
+	const suffix = toIdx < wordTokens.length - 1 ? ' …' : '';
+
+	// Clip and re-zero the offsets relative to clipStart
+	const adjusted: Array<[number, number]> = merged
+		.filter(([s, e]) => s < clipEnd && e > clipStart)
+		.map(([s, e]) => [Math.max(s, clipStart) - clipStart, Math.min(e, clipEnd) - clipStart]);
+
+	return prefix + highlightByOffsets(text.slice(clipStart, clipEnd), adjusted) + suffix;
+}

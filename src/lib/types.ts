@@ -144,7 +144,30 @@ export interface IndexMeta {
 		id: string;
 		passageCount: number;
 	}>;
+	/** Concordance summary — present when concordance.json was emitted. */
+	concordance?: {
+		termCount: number;
+		totalOccurrences: number;
+	} | null;
 }
+
+// ─── Concordance index (static/index/concordance.json) ───────────────────────
+
+/** All occurrences of a single term within one passage. */
+export interface ConcordanceOccurrence {
+	/** Passage ID. */
+	passageId: string;
+	/** Character offset pairs [start, end) in the original passage text. */
+	offsets: Array<[number, number]>;
+}
+
+/**
+ * Concordance index: normalized (lowercase, apostrophe-stripped) term →
+ * list of passages where it occurs with exact character offsets.
+ *
+ * Emitted to static/index/concordance.json by build-index.mjs.
+ */
+export type ConcordanceIndex = Record<string, ConcordanceOccurrence[]>;
 
 // ─── Usage logging ─────────────────────────────────────────────────────────────
 

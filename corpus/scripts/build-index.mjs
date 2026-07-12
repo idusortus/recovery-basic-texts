@@ -3,11 +3,13 @@
  * build-index.mjs
  *
  * Reads corpus/sources.json (registry) + all corpus/sources/<id>.json files,
- * builds a deterministic minisearch index, and emits three static assets:
+ * builds a deterministic minisearch index and concordance index, and emits
+ * four static assets:
  *
- *   static/index/minisearch.json   — serialized minisearch index
- *   static/index/passages.json     — id → passage lookup (with text for KWIC)
- *   static/index/index-meta.json   — { version, builtAt, sources }
+ *   static/index/minisearch.json    — serialized minisearch index
+ *   static/index/passages.json      — id → passage lookup (with text for KWIC)
+ *   static/index/concordance.json   — normalized term → [{passageId, offsets}]
+ *   static/index/index-meta.json    — { version, builtAt, sources, concordance }
  *
  * Version is a SHA-256 content hash of all corpus inputs combined deterministically,
  * so identical inputs always produce the same version hash.
@@ -16,6 +18,7 @@
  * Wired into: npm run build via package.json
  *
  * LUW 4 — PRD §7.2
+ * Issue B — concordance index
  */
 
 import { createHash } from 'node:crypto';
@@ -23,6 +26,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import MiniSearch from 'minisearch';
+import { buildConcordance } from './concordance-utils.mjs';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
@@ -143,6 +147,17 @@ for (const p of allPassages) {
 	passageLookup[p.id] = p;
 }
 
+// ─── Build concordance index ──────────────────────────────────────────────────
+
+const concordance = buildConcordance(allPassages);
+const termCount = Object.keys(concordance).length;
+const totalOccurrences = Object.values(concordance).reduce(
+	(sum, occs) => sum + occs.reduce((s, o) => s + o.offsets.length, 0),
+	0
+);
+
+console.log(`[build-index] Concordance: ${termCount} terms, ${totalOccurrences} total occurrences`);
+
 // ─── Compute deterministic version hash ──────────────────────────────────────
 
 // Hash the inputs in a deterministic order (source IDs sorted, then passage IDs sorted)
@@ -175,14 +190,19 @@ writeFileSync(join(outDir, 'minisearch.json'), minisearchJson, 'utf-8');
 const passagesJson = JSON.stringify(passageLookup);
 writeFileSync(join(outDir, 'passages.json'), passagesJson, 'utf-8');
 
+const concordanceJson = JSON.stringify(concordance);
+writeFileSync(join(outDir, 'concordance.json'), concordanceJson, 'utf-8');
+
 const indexMeta = {
 	version,
 	builtAt: new Date().toISOString(),
-	sources: Object.values(sourceMeta)
+	sources: Object.values(sourceMeta),
+	concordance: { termCount, totalOccurrences }
 };
 writeFileSync(join(outDir, 'index-meta.json'), JSON.stringify(indexMeta, null, 2), 'utf-8');
 
 console.log(`[build-index] ✓ Emitted static/index/ (version: ${version})`);
-console.log(`  minisearch.json  ${(minisearchJson.length / 1024).toFixed(1)} KB`);
-console.log(`  passages.json    ${(passagesJson.length / 1024).toFixed(1)} KB`);
-console.log(`  index-meta.json  (version: ${version})`);
+console.log(`  minisearch.json   ${(minisearchJson.length / 1024).toFixed(1)} KB`);
+console.log(`  passages.json     ${(passagesJson.length / 1024).toFixed(1)} KB`);
+console.log(`  concordance.json  ${(concordanceJson.length / 1024).toFixed(1)} KB  (${termCount} terms)`);
+console.log(`  index-meta.json   (version: ${version})`);

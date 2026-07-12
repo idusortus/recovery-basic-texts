@@ -35,7 +35,13 @@
     "color": "#7C5C3A",
     "sortOrder": 2,
     "enabled": true,
-    "edition": null
+    "edition": {
+      "edition": "64th printing",
+      "year": 2003,
+      "publisher": "Alcoholics Anonymous World Services, Inc.",
+      "isbn": "0-916856-01-1",
+      "referenceUrl": null
+    }
   },
   {
     "id": "twelve-traditions",

@@ -35,3 +35,6 @@ jobs:
 
       - name: Verify citations and pagemaps
         run: node corpus/scripts/verify-citations.mjs
+
+      - name: Test concordance tokenizer
+        run: node corpus/scripts/test-concordance-offsets.mjs

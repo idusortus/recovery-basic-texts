@@ -1,0 +1,97 @@
+{
+  "sourceId": "twelve-steps-traditions",
+  "editionRef": "Twelve Steps and Twelve Traditions, 64th Printing, January 2003, Alcoholics Anonymous World Services, Inc. (ISBN 0-916856-01-1). Note: chapterRef values in the corpus are shifted — each passage is labeled under the NEXT section's name as used by the ingest pipeline.",
+  "builtAt": "2026-07-11T00:00:00.000Z",
+  "entries": [
+    {
+      "corpusPageRef": "p.3",
+      "printedPage": null,
+      "chapter": "Front Matter",
+      "anchor": "TWELVE STEPS and TWELVE TRADITIONS"
+    },
+    {
+      "corpusPageRef": "p.15",
+      "printedPage": 15,
+      "chapter": "Step One",
+      "anchor": "Foreword A LCOHOLICS ANONYMOUS is a worldwide fellowship"
+    },
+    {
+      "corpusPageRef": "p.21",
+      "printedPage": 21,
+      "chapter": "Step Two",
+      "anchor": "Step One \"We admitted we were powerless over alcohol"
+    },
+    {
+      "corpusPageRef": "p.25",
+      "printedPage": 25,
+      "chapter": "Step Two",
+      "anchor": "Step Two \"Came to believe that a Power greater than"
+    },
+    {
+      "corpusPageRef": "p.34",
+      "printedPage": 34,
+      "chapter": "Step Three",
+      "anchor": "Step Three \"Made a decision to turn our will"
+    },
+    {
+      "corpusPageRef": "p.42",
+      "printedPage": 42,
+      "chapter": "Step Three",
+      "anchor": "Step Four \"Made a searching and fearless moral"
+    },
+    {
+      "corpusPageRef": "p.55",
+      "printedPage": 55,
+      "chapter": "Step Four",
+      "anchor": "Step Five \"Admitted to God, to ourselves"
+    },
+    {
+      "corpusPageRef": "p.63",
+      "printedPage": 63,
+      "chapter": "Step Five",
+      "anchor": "Step Six \"Were entirely ready to have God remove"
+    },
+    {
+      "corpusPageRef": "p.70",
+      "printedPage": 70,
+      "chapter": "Step Six",
+      "anchor": "Step Seven \"Humbly asked Him to remove our shortcomings"
+    },
+    {
+      "corpusPageRef": "p.77",
+      "printedPage": 77,
+      "chapter": "Step Seven",
+      "anchor": "Step Eight \"Made a list of all persons we had harmed"
+    },
+    {
+      "corpusPageRef": "p.83",
+      "printedPage": 83,
+      "chapter": "Step Eight",
+      "anchor": "Step Nine \"Made direct amends to such people"
+    },
+    {
+      "corpusPageRef": "p.88",
+      "printedPage": 88,
+      "chapter": "Step Eight",
+      "anchor": "Step Ten \"Continued to take personal inventory"
+    },
+    {
+      "corpusPageRef": "p.96",
+      "printedPage": 96,
+      "chapter": "Step Nine",
+      "anchor": "Step Eleven \"Sought through prayer and meditation"
+    },
+    {
+      "corpusPageRef": "p.106",
+      "printedPage": 106,
+      "chapter": "Step Nine",
+      "anchor": "Step Twelve \"Having had a spiritual awakening"
+    },
+    {
+      "corpusPageRef": "p.129",
+      "printedPage": 129,
+      "chapter": "Step Eleven",
+      "anchor": "Tradition One \"Our common welfare should come first"
+    }
+  ]
+}

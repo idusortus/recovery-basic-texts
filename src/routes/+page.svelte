@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { Tag, Info, ChevronRight } from '@lucide/svelte';
-	import { loadSearchIndex, search, searchReady, searchError } from '$lib/search/index';
+	import { loadSearchIndex, search, searchReady, searchError, concordanceReady } from '$lib/search/index';
 	import { findExceptions } from '$lib/corpus/exceptions';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
 	import type { GroupedResults, KnownException, Passage } from '$lib/types';
@@ -106,6 +106,14 @@
 		if ($searchReady) {
 			if (debouncedQuery) runSearch(debouncedQuery);
 			todaysReflection = getTodaysReflection();
+		}
+	});
+
+	// Re-run the active search when concordance finishes loading in the background.
+	// This upgrades results from MiniSearch (fallback) to exact concordance matches.
+	$effect(() => {
+		if ($concordanceReady && $searchReady && debouncedQuery) {
+			runSearch(debouncedQuery);
 		}
 	});
 
