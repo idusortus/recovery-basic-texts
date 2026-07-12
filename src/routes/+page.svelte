@@ -21,6 +21,7 @@
 	let results = $state<GroupedResults[]>([]);
 	let hints = $state<KnownException[]>([]);
 	let activeSourceIds = $state<Set<string>>(new Set(enabledSources.map((s) => s.id)));
+	let phraseMode = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let todaysReflection = $state<Passage | null>(null);
 
@@ -92,7 +93,8 @@
 		results = search(q, {
 			sourceFilter: activeSourceIds.size < enabledSources.length
 				? [...activeSourceIds]
-				: undefined
+				: undefined,
+			phraseMode
 		});
 	}
 
@@ -255,6 +257,21 @@
 					{source.shortTitle}
 				</button>
 			{/each}
+			<!-- Exact phrase mode toggle -->
+			<button
+				type="button"
+				onclick={() => { phraseMode = !phraseMode; runSearch(debouncedQuery); }}
+				aria-pressed={phraseMode}
+				aria-label={phraseMode ? 'Exact phrase mode on — click to switch to word match' : 'Word match mode — click to search exact phrase'}
+				class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
+					   border transition-colors duration-150 ml-auto
+					   {phraseMode
+						   ? 'border-transparent bg-navy text-white dark:bg-amber-400 dark:text-slate-900'
+						   : 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
+			>
+				<span aria-hidden="true" class="font-mono text-xs">{phraseMode ? '"…"' : '""'}</span>
+				Exact phrase
+			</button>
 		</div>
 	{/if}
 
@@ -498,6 +515,11 @@
 									<p class="text-xs font-bold uppercase tracking-widest mb-2"
 										style="color: {group.source.color};">
 										Quick Reference
+									</p>
+								{:else if result.notableLabel}
+									<p class="text-xs font-bold uppercase tracking-widest mb-2"
+										style="color: {group.source.color};">
+										{result.notableLabel.toUpperCase()}
 									</p>
 								{:else if result.matchedBySynonym}
 									<p class="text-xs text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">

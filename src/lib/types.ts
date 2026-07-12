@@ -129,6 +129,8 @@ export interface SearchResult {
 	matchedBySynonym?: boolean;
 	/** True for synthetic "Quick Reference" results injected for step/tradition queries. */
 	pinned?: boolean;
+	/** Set to a passage name (e.g. "The Promises") when this is a notable AA passage. */
+	notableLabel?: string;
 }
 
 export interface GroupedResults {

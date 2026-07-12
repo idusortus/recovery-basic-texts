@@ -26,6 +26,7 @@ import type {
 import { enabledSources, getSourceById } from '$lib/corpus/registry';
 import { buildKwic, buildCitation, buildKwicFromOffsets, buildFullKwic } from './kwic';
 import { getSynonymTerms } from '$lib/corpus/synonyms';
+import { getNotableLabel } from '$lib/corpus/notable';
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
@@ -188,6 +189,11 @@ function parseQuery(q: string): ParsedQuery {
 interface SearchOptions {
 	/** Filter to these source IDs only. Empty = all enabled sources. */
 	sourceFilter?: string[];
+	/**
+	 * When true, the entire query is matched as an exact adjacent phrase rather than
+	 * AND-matched individual words. Uses a linear in-memory substring scan.
+	 */
+	phraseMode?: boolean;
 }
 
 /**
@@ -215,6 +221,14 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 			? (options.sourceFilter.map((id) => getSourceById(id)).filter(Boolean) as Source[])
 			: [...enabledSources];
 	const activeSourceIds = new Set(activeSources.map((s) => s.id));
+
+	// ── Phrase mode: exact adjacent substring scan ──────────────────────────────
+	if (options.phraseMode && q.length >= 2) {
+		const grouped = _searchByPhrase(
+			q, store!.passages, activeSources, activeSourceIds
+		);
+		return _injectPinnedResult(q, grouped, store!.passages, activeSources);
+	}
 
 	// ── Concordance path: exact literal matching, no fuzzy ─────────────────────
 	if (store!.concordance) {
@@ -450,7 +464,8 @@ function _buildGrouped(
 
 		const result: SearchResult = {
 			passage, source, kwic, citation,
-			matchedBySynonym: !directIds.has(id)
+			matchedBySynonym: !directIds.has(id),
+			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
 		};
 
 		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
@@ -533,8 +548,61 @@ function _searchByMiniSearch(
 		const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
 		const result: SearchResult = {
 			passage, source, kwic, citation,
-			matchedBySynonym: directMatchIds !== null && !directMatchIds.has(id)
+			matchedBySynonym: directMatchIds !== null && !directMatchIds.has(id),
+			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
 		};
+		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
+		resultsBySource.get(source.id)!.push(result);
+	}
+
+	const grouped: GroupedResults[] = [];
+	for (const source of activeSources) {
+		const results = resultsBySource.get(source.id);
+		if (results && results.length > 0) {
+			results.sort((a, b) => a.passage.sequence - b.passage.sequence);
+			grouped.push({ source, results });
+		}
+	}
+	return grouped;
+}
+
+// ─── Phrase search (exact adjacent substring) ───────────────────────────────
+
+/**
+ * Search all in-memory passages for an exact phrase (adjacent word match).
+ * Normalises both the query and the passage text the same way the concordance
+ * index does (strip curly apostrophes, lowercase) before the substring test.
+ *
+ * This is O(n) over all passages but is fast enough for client-side use since
+ * the full passage lookup is already in memory.
+ */
+function _searchByPhrase(
+	rawQuery: string,
+	passages: PassageLookup,
+	activeSources: Source[],
+	activeSourceIds: Set<string>
+): GroupedResults[] {
+	const normalised = rawQuery.trim().replace(/['''’ʼ]/g, '').toLowerCase();
+	if (!normalised) return [];
+
+	const resultsBySource = new Map<string, SearchResult[]>();
+
+	for (const raw of Object.values(passages)) {
+		const passage = raw as Passage;
+		if (!activeSourceIds.has(passage.sourceId)) continue;
+		const normText = passage.text.replace(/['''’ʼ]/g, '').toLowerCase();
+		if (!normText.includes(normalised)) continue;
+
+		const source = getSourceById(passage.sourceId);
+		if (!source) continue;
+
+		const kwic = buildKwic(passage.text, rawQuery, source.displayMode, source.contextWords);
+		const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
+		const result: SearchResult = {
+			passage, source, kwic, citation,
+			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
+		};
+
 		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
 		resultsBySource.get(source.id)!.push(result);
 	}
