@@ -222,7 +222,7 @@
 			bind:value={query}
 			oninput={handleInput}
 			onkeydown={handleKeydown}
-			placeholder="Search phrases, keywords (e.g., 'acceptance')"
+			placeholder="Search phrases, keywords (e.g., 'higher power')"
 			autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
 			class="w-full rounded border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
 				   px-4 py-3.5 text-base text-[#1A1A1A] dark:text-slate-200 placeholder-stone-400
