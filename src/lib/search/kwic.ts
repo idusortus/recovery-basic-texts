@@ -2,8 +2,8 @@
  * KWIC (Keyword-In-Context) snippet generation.
  *
  * Computes a display-mode-correct snippet with HTML-safe <mark> highlights.
- * Full-text sources show the entire passage; concordance-only and snippet
- * sources show `contextWords` each side of the first keyword match.
+ * All sources show 2–3 full sentences around the first keyword match; the
+ * passage view (not the search card) is where full text is rendered.
  *
  * Security: text is HTML-escaped before inserting <mark> tags to prevent XSS.
  *
@@ -49,14 +49,78 @@ export function extractTerms(query: string): string[] {
 	return [...new Set(terms)]; // deduplicate
 }
 
+// ─── Sentence splitting ───────────────────────────────────────────────────────
+
+/**
+ * Known abbreviations that end with a period but are NOT sentence boundaries.
+ * Matched case-insensitively as a trailing word before a `. `.
+ */
+const ABBREV_PATTERN = /(?:Dr|Mr|Mrs|Ms|Jr|Sr|St|vs|etc|A\.A|p|pp|vol|no|ed|rev|approx|dept|est|govt|lb|oz|ft|yr)\s*$/i;
+
+/**
+ * Split plain text into sentences.
+ *
+ * Splits on `. `, `! `, `? ` where:
+ *   - The character before the punctuation is not part of a known abbreviation
+ *   - The character after the space is an uppercase letter (or end of string)
+ * This avoids splitting on "A.A.", "p.58", "Dr. Bob", numbered lists like "1. We admitted", etc.
+ */
+export function splitSentences(text: string): string[] {
+	// Split at sentence-ending punctuation followed by a space and uppercase letter
+	// Uses a lookahead to keep the delimiter attached to the preceding sentence.
+	const raw = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
+	const sentences: string[] = [];
+	for (const chunk of raw) {
+		const trimmed = chunk.trim();
+		if (!trimmed) continue;
+		// If the chunk ends with an abbreviation period followed by nothing, it's
+		// likely a false split — merge back with the next chunk.
+		// This handles "Dr. " splits (the last word of `chunk` is an abbreviation).
+		const lastWord = trimmed.match(/(\S+)$/)?.[1] ?? '';
+		if (ABBREV_PATTERN.test(lastWord) && sentences.length > 0) {
+			sentences[sentences.length - 1] += ' ' + trimmed;
+		} else {
+			sentences.push(trimmed);
+		}
+	}
+	return sentences.length > 0 ? sentences : [text.trim()];
+}
+
+/**
+ * Return the index of the sentence that contains the first keyword match.
+ * Searches each sentence for any of the provided terms (case-insensitive, stripped).
+ * Returns 0 if no match is found.
+ */
+function findMatchingSentenceIndex(sentences: string[], terms: string[]): number {
+	const strip = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+	for (let i = 0; i < sentences.length; i++) {
+		const strippedSentence = strip(sentences[i]);
+		for (const term of terms) {
+			const termWords = term.trim().split(/\s+/);
+			if (termWords.length === 1) {
+				if (strippedSentence.includes(strip(termWords[0]))) return i;
+			} else {
+				// Multi-word phrase: check that all words appear in order
+				const stripped = termWords.map(strip);
+				if (stripped.every((w) => w && strippedSentence.includes(w))) return i;
+			}
+		}
+	}
+	return 0;
+}
+
 // ─── KWIC clipping ────────────────────────────────────────────────────────────
+
+/** Number of full sentences to show on each side of the matching sentence. */
+const SENTENCE_CONTEXT = 2;
 
 /**
  * Build a KWIC HTML string for `text` given `query` and `displayMode`.
  *
- * - `full-text`: returns the entire escaped text with keywords highlighted.
- * - `concordance-only` / `snippet`: returns `contextWords` words either side
- *   of the first keyword match, with `…` ellipsis prefix/suffix as needed.
+ * For all display modes, clips to SENTENCE_CONTEXT full sentences on each
+ * side of the sentence containing the first keyword match, with `…` ellipsis
+ * where text is cut. The `contextWords` parameter is retained for API
+ * compatibility but is no longer used for clipping.
  *
  * The returned string is safe HTML (text is escaped; only <mark> and <span>
  * tags are inserted).
@@ -64,71 +128,26 @@ export function extractTerms(query: string): string[] {
 export function buildKwic(
 	text: string,
 	query: string,
-	displayMode: DisplayMode,
-	contextWords: number
+	_displayMode: DisplayMode,
+	_contextWords: number
 ): string {
 	const terms = extractTerms(query);
 	if (terms.length === 0) return escapeHtml(text);
 
-	if (displayMode === 'full-text') {
-		return highlightAll(text, terms);
-	}
+	const sentences = splitSentences(text);
+	const matchIdx = findMatchingSentenceIndex(sentences, terms);
 
-	// Concordance-only / snippet: clip to contextWords each side of first match
-	const words = text.split(/(\s+)/); // preserve whitespace tokens
-	// Build a token array of just the word tokens (non-whitespace)
-	const wordTokens: Array<{ word: string; index: number }> = [];
-	for (let i = 0; i < words.length; i++) {
-		if (words[i].trim()) {
-			wordTokens.push({ word: words[i], index: i });
-		}
-	}
+	const fromIdx = Math.max(0, matchIdx - SENTENCE_CONTEXT);
+	const toIdx = Math.min(sentences.length - 1, matchIdx + SENTENCE_CONTEXT);
 
-	// Find first matching word position
-	let matchWordIndex = -1;
-	outer: for (let wi = 0; wi < wordTokens.length; wi++) {
-		const lc = wordTokens[wi].word.toLowerCase().replace(/[^a-z0-9']/g, '');
-		for (const term of terms) {
-			const termWords = term.split(/\s+/);
-			if (termWords.length === 1) {
-				if (lc.includes(termWords[0].replace(/[^a-z0-9']/g, ''))) {
-					matchWordIndex = wi;
-					break outer;
-				}
-			} else {
-				// Multi-word phrase: check consecutive words
-				let allMatch = true;
-				for (let j = 0; j < termWords.length; j++) {
-					if (wi + j >= wordTokens.length) { allMatch = false; break; }
-					const lcj = wordTokens[wi + j].word.toLowerCase().replace(/[^a-z0-9']/g, '');
-					if (!lcj.includes(termWords[j].replace(/[^a-z0-9']/g, ''))) {
-						allMatch = false; break;
-					}
-				}
-				if (allMatch) { matchWordIndex = wi; break outer; }
-			}
-		}
-	}
+	const clip = sentences.slice(fromIdx, toIdx + 1).join(' ');
+	const prefix = fromIdx > 0 ? '… ' : '';
+	const suffix = toIdx < sentences.length - 1 ? ' …' : '';
 
-	if (matchWordIndex === -1) {
-		// No match found — show the first contextWords words
-		const clip = wordTokens.slice(0, contextWords).map((t) => t.word).join(' ');
-		return escapeHtml(clip) + (wordTokens.length > contextWords ? '…' : '');
-	}
-
-	const startWI = Math.max(0, matchWordIndex - contextWords);
-	const endWI = Math.min(wordTokens.length - 1, matchWordIndex + contextWords);
-
-	const clipWords = wordTokens.slice(startWI, endWI + 1).map((t) => t.word);
-	const clipText = clipWords.join(' ');
-
-	const prefix = startWI > 0 ? '…' : '';
-	const suffix = endWI < wordTokens.length - 1 ? '…' : '';
-
-	return prefix + highlightAll(clipText, terms) + suffix;
+	return prefix + highlightAll(clip, terms) + suffix;
 }
 
-// ─── Internal: highlight all terms in text ────────────────────────────────────
+// ─── Offset-based KWIC (concordance path) ─────────────────────────────────────
 
 function highlightAll(text: string, terms: string[]): string {
 	if (terms.length === 0) return escapeHtml(text);
@@ -177,6 +196,16 @@ export function buildCitation(
 	return `${text}\n\n— ${parts.join(', ')}`;
 }
 
+/**
+ * Return the full passage text with search terms highlighted, without any clipping.
+ * Used for pinned "Quick Reference" results where the entire list must be visible.
+ */
+export function buildFullKwic(text: string, query: string): string {
+	const terms = extractTerms(query);
+	if (terms.length === 0) return escapeHtml(text);
+	return highlightAll(text, terms);
+}
+
 // ─── Offset-based KWIC (concordance path) ─────────────────────────────────────
 
 /** Merge overlapping or adjacent [start, end) pairs. Input must be sorted by start. */
@@ -211,52 +240,57 @@ function highlightByOffsets(text: string, offsets: Array<[number, number]>): str
  * Unlike `buildKwic()`, this never uses regex matching — it highlights the exact
  * characters that were indexed. Zero false positives; zero missed highlights.
  *
- * - `full-text`: entire passage, all occurrences highlighted.
- * - `concordance-only` / `snippet`: `contextWords` words each side of the first
- *   match, with ellipsis prefix/suffix.
+ * Uses sentence-aware clipping for all display modes: shows SENTENCE_CONTEXT
+ * full sentences on each side of the sentence containing the first match.
+ * The `contextWords` parameter is retained for API compatibility but unused.
  */
 export function buildKwicFromOffsets(
 	text: string,
 	offsets: Array<[number, number]>,
-	displayMode: DisplayMode,
-	contextWords: number
+	_displayMode: DisplayMode,
+	_contextWords: number
 ): string {
 	if (offsets.length === 0) return escapeHtml(text);
 
 	const sorted = [...offsets].sort((a, b) => a[0] - b[0]);
 	const merged = mergeOffsets(sorted);
-
-	if (displayMode === 'full-text') {
-		return highlightByOffsets(text, merged);
-	}
-
-	// Concordance-only / snippet: clip contextWords words around the first match
 	const [matchStart] = merged[0];
 
-	// Build word-token list with cumulative character positions
-	const tokens = text.split(/(\s+)/);
-	type WordToken = { start: number; end: number };
-	const wordTokens: WordToken[] = [];
+	// Split into sentences and find which sentence contains the first match offset.
+	const sentences = splitSentences(text);
+
+	// Build cumulative character positions for sentence boundaries.
+	// We re-join sentences with a single space to match what splitSentences split.
 	let charPos = 0;
-	for (const tok of tokens) {
-		const end = charPos + tok.length;
-		if (tok.trim()) wordTokens.push({ start: charPos, end });
-		charPos = end;
+	let matchSentenceIdx = 0;
+	for (let i = 0; i < sentences.length; i++) {
+		const sentEnd = charPos + sentences[i].length;
+		if (matchStart >= charPos && matchStart < sentEnd) {
+			matchSentenceIdx = i;
+			break;
+		}
+		// +1 for the space separator between sentences in the original text
+		charPos = sentEnd + 1;
+		if (i === sentences.length - 1) matchSentenceIdx = i;
 	}
-	if (wordTokens.length === 0) return escapeHtml(text);
 
-	// Find the word containing matchStart
-	let matchWordIdx = wordTokens.findIndex((t) => t.start <= matchStart && matchStart < t.end);
-	if (matchWordIdx === -1) matchWordIdx = 0;
+	const fromIdx = Math.max(0, matchSentenceIdx - SENTENCE_CONTEXT);
+	const toIdx = Math.min(sentences.length - 1, matchSentenceIdx + SENTENCE_CONTEXT);
 
-	const fromIdx = Math.max(0, matchWordIdx - contextWords);
-	const toIdx = Math.min(wordTokens.length - 1, matchWordIdx + contextWords);
-
-	const clipStart = wordTokens[fromIdx].start;
-	const clipEnd = wordTokens[toIdx].end;
+	// Compute the character range of the clipped sentence block within the original text.
+	// Re-walk to find the start of sentence `fromIdx` and end of sentence `toIdx`.
+	charPos = 0;
+	let clipStart = 0;
+	let clipEnd = text.length;
+	for (let i = 0; i < sentences.length; i++) {
+		if (i === fromIdx) clipStart = charPos;
+		const sentEnd = charPos + sentences[i].length;
+		if (i === toIdx) { clipEnd = sentEnd; break; }
+		charPos = sentEnd + 1;
+	}
 
 	const prefix = fromIdx > 0 ? '… ' : '';
-	const suffix = toIdx < wordTokens.length - 1 ? ' …' : '';
+	const suffix = toIdx < sentences.length - 1 ? ' …' : '';
 
 	// Clip and re-zero the offsets relative to clipStart
 	const adjusted: Array<[number, number]> = merged

@@ -127,6 +127,8 @@ export interface SearchResult {
 	citation: string;
 	/** True when this result was matched via synonym expansion, not the literal query term. */
 	matchedBySynonym?: boolean;
+	/** True for synthetic "Quick Reference" results injected for step/tradition queries. */
+	pinned?: boolean;
 }
 
 export interface GroupedResults {

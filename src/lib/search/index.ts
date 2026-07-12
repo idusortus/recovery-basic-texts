@@ -24,7 +24,7 @@ import type {
 	ConcordanceIndex
 } from '$lib/types';
 import { enabledSources, getSourceById } from '$lib/corpus/registry';
-import { buildKwic, buildCitation, buildKwicFromOffsets } from './kwic';
+import { buildKwic, buildCitation, buildKwicFromOffsets, buildFullKwic } from './kwic';
 import { getSynonymTerms } from '$lib/corpus/synonyms';
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
@@ -218,21 +218,114 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 
 	// ── Concordance path: exact literal matching, no fuzzy ─────────────────────
 	if (store!.concordance) {
-		return _searchByConcordance(
+		const grouped = _searchByConcordance(
 			q, phrases, keywords,
 			store!.concordance, store!.passages,
 			activeSources, activeSourceIds
 		);
+		return _injectPinnedResult(q, grouped, store!.passages, activeSources);
 	}
 
 	// ── MiniSearch fallback (while concordance is loading) ──────────────────────
 	// fuzzy is disabled here to prevent false positives; concordance will take
 	// over once loaded.
-	return _searchByMiniSearch(
+	const grouped = _searchByMiniSearch(
 		q, phrases, keywords,
 		store!.ms!, store!.passages,
 		activeSources, activeSourceIds
 	);
+	return _injectPinnedResult(q, grouped, store!.passages, activeSources);
+}
+
+// ─── Pinned results (steps / traditions quick reference) ─────────────────────
+
+type PinnedType = 'steps' | 'traditions';
+
+/**
+ * Detect whether a query is requesting the twelve steps or twelve traditions list.
+ * Returns the type of pinned result needed, or null.
+ */
+function _detectPinnedQuery(query: string): PinnedType | null {
+	const q = query.trim();
+	if (/^(twelve|12)\s+steps?$/i.test(q)) return 'steps';
+	if (/^(twelve|12)\s+traditions?$/i.test(q)) return 'traditions';
+	return null;
+}
+
+/**
+ * Find the pinned passage for steps or traditions.
+ * For steps: the Big Book passage in "Chapter 5 — How It Works" listing all 12 steps.
+ * For traditions: the Big Book appendix passage listing all 12 traditions, or the
+ * 12x12 TOC passage as a fallback.
+ */
+function _findPinnedPassage(type: PinnedType, passages: PassageLookup): Passage | null {
+	if (type === 'steps') {
+		// The Big Book passage in Chapter 5 that lists all twelve steps numerically.
+		for (const p of Object.values(passages) as Passage[]) {
+			if (
+				p.sourceId === 'big-book-2ed' &&
+				p.chapterRef === 'Chapter 5 — How It Works' &&
+				p.text.includes('Here are the steps we took')
+			) {
+				return p;
+			}
+		}
+	}
+
+	if (type === 'traditions') {
+		// First try the Big Book appendix/back-matter passage with the traditions list.
+		for (const p of Object.values(passages) as Passage[]) {
+			if (
+				p.sourceId === 'big-book-2ed' &&
+				p.text.includes('Tradition One') &&
+				p.text.includes('Our common welfare should come first')
+			) {
+				return p;
+			}
+		}
+		// Fallback: 12x12 TOC passage that contains traditions summaries.
+		const fallback = (passages as PassageLookup)['twelve-steps-traditions-step-one-p0007'] as Passage | undefined;
+		if (fallback) return fallback;
+	}
+
+	return null;
+}
+
+/**
+ * Optionally prepend a pinned "Quick Reference" result to the grouped results.
+ * Mutates the grouped array in place (safe — it's built fresh on each search).
+ */
+function _injectPinnedResult(
+	query: string,
+	grouped: GroupedResults[],
+	passages: PassageLookup,
+	activeSources: Source[]
+): GroupedResults[] {
+	const pinnedType = _detectPinnedQuery(query);
+	if (!pinnedType) return grouped;
+
+	const passage = _findPinnedPassage(pinnedType, passages);
+	if (!passage) return grouped;
+
+	const source = getSourceById(passage.sourceId);
+	if (!source) return grouped;
+
+	const kwic = buildFullKwic(passage.text, query);
+	const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
+	const pinnedResult: SearchResult = { passage, source, kwic, citation, pinned: true };
+
+	// Find the group for this source and prepend; create the group if it doesn't exist.
+	const existing = grouped.find((g) => g.source.id === source.id);
+	if (existing) {
+		// Remove any duplicate of this passage already in results
+		const deduped = existing.results.filter((r) => r.passage.id !== passage.id);
+		existing.results = [pinnedResult, ...deduped];
+	} else {
+		const sourceObj = activeSources.find((s) => s.id === source.id) ?? source;
+		grouped.unshift({ source: sourceObj, results: [pinnedResult] });
+	}
+
+	return grouped;
 }
 
 // ─── Concordance search ───────────────────────────────────────────────────────
