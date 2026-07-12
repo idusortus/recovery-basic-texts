@@ -100,9 +100,12 @@ function findMatchingSentenceIndex(sentences: string[], terms: string[]): number
 			if (termWords.length === 1) {
 				if (strippedSentence.includes(strip(termWords[0]))) return i;
 			} else {
-				// Multi-word phrase: check that all words appear in order
+				// Multi-word phrase: require words to appear contiguously (not just individually present).
+				// Stripping non-alphanumeric on both sides means "higher power" → "higherpower",
+				// so it only matches when the words are adjacent in the sentence.
 				const stripped = termWords.map(strip);
-				if (stripped.every((w) => w && strippedSentence.includes(w))) return i;
+				const phraseStr = stripped.filter(Boolean).join('');
+				if (phraseStr && strippedSentence.includes(phraseStr)) return i;
 			}
 		}
 	}

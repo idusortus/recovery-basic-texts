@@ -49,6 +49,7 @@
 	onMount(async () => {
 		initInstallPrompt();
 		const urlQuery = $page.url.searchParams.get('q') ?? '';
+		phraseMode = $page.url.searchParams.get('phrase') === '1';
 		query = urlQuery;
 		debouncedQuery = urlQuery;
 		await loadSearchIndex();
@@ -101,6 +102,7 @@
 	function syncUrl(q: string) {
 		const url = new URL(window.location.href);
 		if (q) { url.searchParams.set('q', q); } else { url.searchParams.delete('q'); }
+		if (phraseMode) { url.searchParams.set('phrase', '1'); } else { url.searchParams.delete('phrase'); }
 		goto(url.pathname + url.search, { replaceState: true, keepFocus: true });
 	}
 
@@ -266,6 +268,8 @@
 					if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
 					debouncedQuery = query;
 					runSearch(query);
+					hints = findExceptions(query);
+					syncUrl(query);
 				}}
 				aria-pressed={phraseMode}
 				aria-label={phraseMode ? 'Exact phrase mode on — click to switch to word match' : 'Word match mode — click to search exact phrase'}
