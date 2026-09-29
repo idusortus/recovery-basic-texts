@@ -57,3 +57,8 @@ pipeline-artifacts/
 # Nested repos / Copilot worktrees — never track these as submodules
 recovery-basic-texts/
 copilot-worktrees/
+
+# cli-five per-session agent memory (mutable, local to each machine)
+STATE.md
+agent-diary.md
+histories/
