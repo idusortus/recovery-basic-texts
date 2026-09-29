@@ -5,10 +5,12 @@ on:
     paths:
       - 'corpus/**'
       - 'src/lib/types.ts'
+      - 'src/lib/search/**'
   pull_request:
     paths:
       - 'corpus/**'
       - 'src/lib/types.ts'
+      - 'src/lib/search/**'
 
 jobs:
   validate:

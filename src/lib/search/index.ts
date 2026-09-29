@@ -24,7 +24,15 @@ import type {
 	ConcordanceIndex
 } from '$lib/types';
 import { enabledSources, getSourceById } from '$lib/corpus/registry';
-import { buildKwic, buildCitation, buildKwicFromOffsets, buildFullKwic } from './kwic';
+import { buildCitation, buildKwicFromOffsets, buildFullKwic, buildExcerpt } from './kwic';
+import { tokenize, processTerm, normalizeString } from './normalize.js';
+import {
+	createSuggestIndex,
+	suggest,
+	type SuggestIndex,
+	type Suggestion
+} from './suggestions';
+import { analyzePassage, scoreMatch } from './match';
 import { getSynonymTerms } from '$lib/corpus/synonyms';
 import { getNotableLabel } from '$lib/corpus/notable';
 
@@ -78,6 +86,33 @@ export function getPassages(): PassageLookup | null {
 	return passages;
 }
 
+// ─── Search-box suggestions (Area 4) ─────────────────────────────────────────
+
+let _suggestIndex: SuggestIndex | null = null;
+let _suggestSource: ConcordanceIndex | null = null;
+
+/**
+ * Ranked term suggestions for the current input, derived from the loaded
+ * concordance term dictionary (sorted prefix lookup + bounded edit distance).
+ *
+ * Returns [] until the dictionary has loaded, so search behavior is unchanged
+ * before then. Suggestions are indexed terms only — never passage text.
+ */
+export function getSuggestionTerms(rawQuery: string, limit = 8): Suggestion[] {
+	let store: SearchStore;
+	_store.subscribe((s) => {
+		store = s;
+	})();
+	const concordance = store!.concordance;
+	if (!concordance) return [];
+
+	if (_suggestSource !== concordance) {
+		_suggestIndex = createSuggestIndex(concordance);
+		_suggestSource = concordance;
+	}
+	return suggest(_suggestIndex!, rawQuery, { limit });
+}
+
 // ─── Index loader ─────────────────────────────────────────────────────────────
 
 let loadPromise: Promise<void> | null = null;
@@ -112,7 +147,9 @@ async function _load(): Promise<void> {
 
 		const ms = MiniSearch.loadJSON(JSON.stringify(msJson), {
 			fields: ['text', 'title', 'chapterRef'],
-			storeFields: ['id', 'sourceId']
+			storeFields: ['id', 'sourceId'],
+			tokenize,
+			processTerm
 		});
 
 		_store.set({
@@ -146,42 +183,61 @@ async function _loadConcordanceInBackground(): Promise<void> {
 	}
 }
 
-// ─── Query normalizer ────────────────────────────────────────────────────────
-
-/**
- * Strip apostrophes (straight and curly) so contractions match indexed tokens.
- * Applied to both phrases and keywords before passing to MiniSearch.
- * F4a — features-001-plan
- */
-function normalizeForSearch(s: string): string {
-	return s.replace(/['‘’ʼ]/g, '');
-}
-
 // ─── Query parser ─────────────────────────────────────────────────────────────
 
 interface ParsedQuery {
-	phrases: string[];
+	/** Each quoted span as a sequence of normalized tokens (an exact adjacent phrase). */
+	phraseTokens: string[][];
+	/** Bare words as normalized, de-duplicated tokens (AND-matched). */
 	keywords: string[];
+	/**
+	 * Keys used for synonym lookup: the bare keywords plus the normalized bare
+	 * query phrase (so multi-word members such as "higher power" are recognized).
+	 */
+	synonymKeys: string[];
 	raw: string;
 }
 
+/** Tokenize a raw query fragment into normalized, searchable terms. */
+function termsFromText(text: string): string[] {
+	const terms: string[] = [];
+	for (const token of tokenize(text)) {
+		const normalized = processTerm(token);
+		if (normalized) terms.push(normalized);
+	}
+	return terms;
+}
+
+/**
+ * Parse a query into quoted phrases (exact adjacent token runs) and bare
+ * keywords (AND terms), splitting through the shared tokenizer.
+ */
 function parseQuery(q: string): ParsedQuery {
-	const phrases: string[] = [];
-	const keywords: string[] = [];
+	const phraseTokens: string[][] = [];
 	let rest = q.trim();
 
 	const phraseRegex = /"([^"]+)"/g;
 	let match: RegExpExecArray | null;
 	while ((match = phraseRegex.exec(q)) !== null) {
-		phrases.push(match[1].trim());
+		const tokens = termsFromText(match[1]);
+		if (tokens.length > 0) phraseTokens.push(tokens);
 		rest = rest.replace(match[0], ' ');
 	}
-	for (const word of rest.split(/\s+/)) {
-		const w = word.trim();
-		if (w) keywords.push(w);
-	}
 
-	return { phrases, keywords, raw: q };
+	const keywords = [...new Set(termsFromText(rest))];
+	// Synonym lookup keys: tokenized keywords plus the whole normalized bare
+	// phrase, so "higher power" matches the multi-word concept member.
+	const synonymKeys = [...new Set([...keywords, normalizeString(rest)].filter(Boolean))];
+	return { phraseTokens, keywords, synonymKeys, raw: q };
+}
+
+/** Unique terms across phrases and keywords — the exact-match candidate set. */
+function allQueryTerms(phrases: string[][], keywords: string[]): string[] {
+	const terms = new Set<string>(keywords);
+	for (const phrase of phrases) {
+		for (const token of phrase) terms.add(token);
+	}
+	return [...terms];
 }
 
 // ─── Search function ──────────────────────────────────────────────────────────
@@ -214,7 +270,7 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 	const q = query.trim();
 	if (!q) return [];
 
-	const { phrases, keywords } = parseQuery(q);
+	const { phraseTokens, keywords, synonymKeys } = parseQuery(q);
 
 	const activeSources: Source[] =
 		options.sourceFilter && options.sourceFilter.length > 0
@@ -233,7 +289,7 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 	// ── Concordance path: exact literal matching, no fuzzy ─────────────────────
 	if (store!.concordance) {
 		const grouped = _searchByConcordance(
-			q, phrases, keywords,
+			phraseTokens, keywords, synonymKeys,
 			store!.concordance, store!.passages,
 			activeSources, activeSourceIds
 		);
@@ -244,7 +300,7 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 	// fuzzy is disabled here to prevent false positives; concordance will take
 	// over once loaded.
 	const grouped = _searchByMiniSearch(
-		q, phrases, keywords,
+		phraseTokens, keywords, synonymKeys,
 		store!.ms!, store!.passages,
 		activeSources, activeSourceIds
 	);
@@ -323,6 +379,8 @@ function _injectPinnedResult(
 
 	const source = getSourceById(passage.sourceId);
 	if (!source) return grouped;
+	// Quick Reference renders full text — only safe for full-text (public-domain) sources.
+	if (source.displayMode !== 'full-text') return grouped;
 
 	const kwic = buildFullKwic(passage.text, query);
 	const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
@@ -342,43 +400,91 @@ function _injectPinnedResult(
 	return grouped;
 }
 
-// ─── Concordance search ───────────────────────────────────────────────────────
+// ─── Shared result assembly (both paths) ─────────────────────────────────────
 
-function _normalizedTerm(s: string): string {
-	return s.replace(/['''\u2019\u02bc]/g, '').toLowerCase();
+interface Candidate {
+	passage: Passage;
+	matchedBySynonym: boolean;
+	/**
+	 * Extra terms to highlight (synonym terms that matched). Query terms are
+	 * always highlighted; this only adds the synonym that caused the match.
+	 */
+	highlightTerms: string[];
 }
 
 /**
- * Concordance-based search: exact AND matching across all query terms,
- * with exact character offsets for highlighting.
+ * Build grouped, ranked results from exact-match candidates. BOTH search paths
+ * call this, so ranking and highlighting are identical by construction.
+ */
+function _rankAndGroup(
+	candidates: Iterable<Candidate>,
+	phraseTokens: string[][],
+	keywords: string[],
+	activeSources: Source[],
+	activeSourceIds: Set<string>
+): GroupedResults[] {
+	const bySource = new Map<string, Array<{ result: SearchResult; score: number }>>();
+
+	for (const candidate of candidates) {
+		const passage = candidate.passage;
+		if (!activeSourceIds.has(passage.sourceId)) continue;
+		const source = getSourceById(passage.sourceId);
+		if (!source) continue;
+
+		const match = analyzePassage(passage.text, phraseTokens, keywords);
+		const highlight = candidate.highlightTerms.length
+			? analyzePassage(passage.text, phraseTokens, keywords, candidate.highlightTerms)
+			: match;
+		const kwic = buildKwicFromOffsets(
+			passage.text, highlight.offsets, source.displayMode, source.contextWords, highlight.anchor
+		);
+		// The copy citation must never contain a protected passage's full text:
+		// full-text sources get the whole text, others get the displayed excerpt.
+		const excerpt = buildExcerpt(
+			passage.text, highlight.offsets, source.displayMode, source.contextWords, highlight.anchor
+		);
+		const citation = buildCitation(excerpt, source.title, passage.chapterRef, passage.pageRef);
+		const result: SearchResult = {
+			passage, source, kwic, citation,
+			matchedBySynonym: candidate.matchedBySynonym,
+			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
+		};
+
+		let bucket = bySource.get(source.id);
+		if (!bucket) { bucket = []; bySource.set(source.id, bucket); }
+		bucket.push({ result, score: scoreMatch(match) });
+	}
+
+	const grouped: GroupedResults[] = [];
+	for (const source of activeSources) {
+		const bucket = bySource.get(source.id);
+		if (!bucket || bucket.length === 0) continue;
+		// Relevance first, then deterministic corpus order (source order is the group order).
+		bucket.sort(
+			(a, b) => b.score - a.score || a.result.passage.sequence - b.result.passage.sequence
+		);
+		grouped.push({ source, results: bucket.map((entry) => entry.result) });
+	}
+	return grouped;
+}
+
+// ─── Concordance search ───────────────────────────────────────────────────────
+
+/**
+ * Concordance-based search: exact AND matching across all query terms (quoted
+ * phrases additionally verified as adjacent), ranked by the shared score.
  */
 function _searchByConcordance(
-	rawQuery: string,
-	phrases: string[],
+	phraseTokens: string[][],
 	keywords: string[],
+	synonymKeys: string[],
 	concordance: ConcordanceIndex,
 	passages: PassageLookup,
 	activeSources: Source[],
 	activeSourceIds: Set<string>
 ): GroupedResults[] {
-	// Collect all unique normalized terms from phrases and keywords
-	const termSet = new Set<string>();
-	for (const phrase of phrases) {
-		for (const word of phrase.split(/\s+/)) {
-			const n = _normalizedTerm(word);
-			if (n.length >= 2) termSet.add(n);
-		}
-	}
-	for (const kw of keywords) {
-		const n = _normalizedTerm(kw);
-		if (n.length >= 2) termSet.add(n);
-	}
-
-	const terms = [...termSet];
+	const terms = allQueryTerms(phraseTokens, keywords);
 	if (terms.length === 0) return [];
-
-	// Build passageId → { term → offsets } for results
-	const passageOffsets = new Map<string, Map<string, Array<[number, number]>>>();
 
 	// AND intersection: sort terms by selectivity (fewest passages = most selective)
 	const sortedTerms = [...terms].sort(
@@ -386,19 +492,14 @@ function _searchByConcordance(
 	);
 
 	let candidateIds: Set<string> | null = null;
-
 	for (const term of sortedTerms) {
 		const occurrences = concordance[term] ?? [];
 		const termSet = new Set<string>();
-
 		for (const occ of occurrences) {
 			const p = passages[occ.passageId];
 			if (!p || !activeSourceIds.has(p.sourceId)) continue;
 			termSet.add(occ.passageId);
-			if (!passageOffsets.has(occ.passageId)) passageOffsets.set(occ.passageId, new Map());
-			passageOffsets.get(occ.passageId)!.set(term, occ.offsets);
 		}
-
 		if (candidateIds === null) {
 			candidateIds = termSet;
 		} else {
@@ -406,175 +507,124 @@ function _searchByConcordance(
 				if (!termSet.has(id)) candidateIds.delete(id);
 			}
 		}
-
 		if (candidateIds.size === 0) break;
 	}
 
-	const directIds = new Set(candidateIds ?? []);
+	const candidates = new Map<string, Candidate>();
+	for (const id of candidateIds ?? []) {
+		const passage = passages[id];
+		if (!passage) continue;
+		// Keywords are guaranteed by the intersection; quoted phrases must be adjacent.
+		const match = analyzePassage(passage.text, phraseTokens, keywords);
+		if (!match.hasAllPhrases) continue;
+		candidates.set(id, { passage, matchedBySynonym: false, highlightTerms: [] });
+	}
 
-	// Synonym expansion for bare-keyword queries
-	const synonymIds = new Set<string>();
-	if (phrases.length === 0) {
-		for (const synTerm of getSynonymTerms(keywords)) {
-			const n = _normalizedTerm(synTerm);
-			for (const occ of concordance[n] ?? []) {
-				const p = passages[occ.passageId];
-				if (!p || !activeSourceIds.has(p.sourceId) || directIds.has(occ.passageId)) continue;
-				synonymIds.add(occ.passageId);
-				if (!passageOffsets.has(occ.passageId)) passageOffsets.set(occ.passageId, new Map());
-				passageOffsets.get(occ.passageId)!.set(n, occ.offsets);
+	// Synonym expansion for bare-keyword queries — each synonym term is tokenized
+	// and its terms AND-matched, so multi-word members ("higher power",
+	// "spirit of the universe") match consistently with the MiniSearch path.
+	if (phraseTokens.length === 0) {
+		for (const synTerm of getSynonymTerms(synonymKeys)) {
+			const synTokens = termsFromText(synTerm);
+			if (synTokens.length === 0) continue;
+
+			let ids: Set<string> | null = null;
+			for (const token of synTokens) {
+				const termSet = new Set<string>();
+				for (const occ of concordance[token] ?? []) {
+					const p = passages[occ.passageId];
+					if (p && activeSourceIds.has(p.sourceId)) termSet.add(occ.passageId);
+				}
+				if (ids === null) {
+					ids = termSet;
+				} else {
+					for (const id of ids) {
+						if (!termSet.has(id)) ids.delete(id);
+					}
+				}
+				if (ids.size === 0) break;
+			}
+
+			for (const id of ids ?? []) {
+				if (candidates.has(id)) continue;
+				const p = passages[id];
+				if (!p) continue;
+				candidates.set(id, { passage: p, matchedBySynonym: true, highlightTerms: synTokens });
 			}
 		}
 	}
 
-	const allIds = new Set([...directIds, ...synonymIds]);
-	if (allIds.size === 0) return [];
-
-	return _buildGrouped(allIds, directIds, passages, activeSources, activeSourceIds, passageOffsets);
-}
-
-function _buildGrouped(
-	allIds: Set<string>,
-	directIds: Set<string>,
-	passages: PassageLookup,
-	activeSources: Source[],
-	activeSourceIds: Set<string>,
-	passageOffsets: Map<string, Map<string, Array<[number, number]>>>
-): GroupedResults[] {
-	const resultsBySource = new Map<string, SearchResult[]>();
-
-	for (const id of allIds) {
-		const passage = passages[id];
-		if (!passage) continue;
-		const source = getSourceById(passage.sourceId);
-		if (!source || !activeSourceIds.has(source.id)) continue;
-
-		// Merge all term offsets for this passage
-		const allOffsets: Array<[number, number]> = [];
-		for (const offs of passageOffsets.get(id)?.values() ?? []) {
-			allOffsets.push(...offs);
-		}
-
-		const kwic = buildKwicFromOffsets(
-			passage.text, allOffsets, source.displayMode, source.contextWords
-		);
-		const citation = buildCitation(
-			passage.text, source.title, passage.chapterRef, passage.pageRef
-		);
-
-		const result: SearchResult = {
-			passage, source, kwic, citation,
-			matchedBySynonym: !directIds.has(id),
-			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
-		};
-
-		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
-		resultsBySource.get(source.id)!.push(result);
-	}
-
-	const grouped: GroupedResults[] = [];
-	for (const source of activeSources) {
-		const results = resultsBySource.get(source.id);
-		if (results && results.length > 0) {
-			results.sort((a, b) => a.passage.sequence - b.passage.sequence);
-			grouped.push({ source, results });
-		}
-	}
-	return grouped;
+	return _rankAndGroup(candidates.values(), phraseTokens, keywords, activeSources, activeSourceIds);
 }
 
 // ─── MiniSearch fallback ──────────────────────────────────────────────────────
 
 /**
  * MiniSearch-based search — used only while concordance.json is loading.
- * fuzzy is disabled to prevent false positives; the concordance path takes
- * over once loaded.
+ * Quoted phrases are verified as adjacent after the AND lookup, so results (and
+ * their ranking/highlighting) match the concordance path.
  */
 function _searchByMiniSearch(
-	rawQuery: string,
-	phrases: string[],
+	phraseTokens: string[][],
 	keywords: string[],
+	synonymKeys: string[],
 	ms: MiniSearch,
 	passages: PassageLookup,
 	activeSources: Source[],
 	activeSourceIds: Set<string>
 ): GroupedResults[] {
-	const matchedIds = new Set<string>();
-	let directMatchIds: Set<string> | null = null;
+	const candidates = new Map<string, Candidate>();
+	const terms = allQueryTerms(phraseTokens, keywords);
 
-	// Phrase searches
-	for (const phrase of phrases) {
-		const results = ms.search(normalizeForSearch(phrase), { combineWith: 'AND', boost: { text: 2 } });
-		for (const r of results) {
-			if (activeSourceIds.has(r.sourceId as string)) matchedIds.add(r.id as string);
+	if (terms.length > 0) {
+		// fuzzy is disabled to prevent false positives; this path must return the
+		// same exact-match candidates as the concordance path.
+		const hits = ms.search(terms.join(' '), {
+			combineWith: 'AND',
+			fuzzy: false,
+			boost: { text: 2 }
+		});
+		for (const hit of hits) {
+			if (!activeSourceIds.has(hit.sourceId as string)) continue;
+			const id = hit.id as string;
+			const passage = passages[id];
+			if (!passage) continue;
+			const match = analyzePassage(passage.text, phraseTokens, keywords);
+			if (!match.hasAllKeywords || !match.hasAllPhrases) continue;
+			candidates.set(id, { passage, matchedBySynonym: false, highlightTerms: [] });
 		}
 	}
 
-	// Keyword searches — no fuzzy (avoids false positives)
-	if (keywords.length > 0) {
-		const nkw = normalizeForSearch(keywords.join(' '));
-		const results = ms.search(nkw, { combineWith: 'AND', boost: { text: 2 }, fuzzy: false });
-		for (const r of results) {
-			if (!activeSourceIds.has(r.sourceId as string)) continue;
-			if (phrases.length === 0 || matchedIds.has(r.id as string)) matchedIds.add(r.id as string);
-		}
-		if (phrases.length > 0) {
-			const phraseSet = new Set(matchedIds);
-			const kwSet = new Set<string>();
-			for (const r of ms.search(nkw, { combineWith: 'AND', boost: { text: 2 }, fuzzy: false })) {
-				if (activeSourceIds.has(r.sourceId as string)) kwSet.add(r.id as string);
+	// Synonym expansion for bare-keyword queries — mirror the concordance path:
+	// tokenize each synonym term and AND-match its terms (no OR noise).
+	if (phraseTokens.length === 0 && keywords.length > 0) {
+		for (const term of getSynonymTerms(synonymKeys)) {
+			const synTokens = termsFromText(term);
+			if (synTokens.length === 0) continue;
+			for (const hit of ms.search(synTokens.join(' '), {
+				combineWith: 'AND',
+				fuzzy: false,
+				boost: { text: 1.5 }
+			})) {
+				if (!activeSourceIds.has(hit.sourceId as string)) continue;
+				const id = hit.id as string;
+				if (candidates.has(id)) continue;
+				const passage = passages[id];
+				if (!passage) continue;
+				if (!analyzePassage(passage.text, [], synTokens).hasAllKeywords) continue;
+				candidates.set(id, { passage, matchedBySynonym: true, highlightTerms: synTokens });
 			}
-			matchedIds.clear();
-			for (const id of phraseSet) { if (kwSet.has(id)) matchedIds.add(id); }
-		}
-
-		if (phrases.length === 0) {
-			directMatchIds = new Set(matchedIds);
-			for (const term of getSynonymTerms(keywords)) {
-				for (const r of ms.search(normalizeForSearch(term), { boost: { text: 1.5 } })) {
-					if (activeSourceIds.has(r.sourceId as string)) matchedIds.add(r.id as string);
-				}
-			}
 		}
 	}
 
-	const resultsBySource = new Map<string, SearchResult[]>();
-	for (const id of matchedIds) {
-		const passage = passages[id] as Passage | undefined;
-		if (!passage) continue;
-		const source = getSourceById(passage.sourceId);
-		if (!source || !activeSourceIds.has(source.id)) continue;
-		const kwic = buildKwic(passage.text, rawQuery, source.displayMode, source.contextWords);
-		const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
-		const result: SearchResult = {
-			passage, source, kwic, citation,
-			matchedBySynonym: directMatchIds !== null && !directMatchIds.has(id),
-			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
-		};
-		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
-		resultsBySource.get(source.id)!.push(result);
-	}
-
-	const grouped: GroupedResults[] = [];
-	for (const source of activeSources) {
-		const results = resultsBySource.get(source.id);
-		if (results && results.length > 0) {
-			results.sort((a, b) => a.passage.sequence - b.passage.sequence);
-			grouped.push({ source, results });
-		}
-	}
-	return grouped;
+	return _rankAndGroup(candidates.values(), phraseTokens, keywords, activeSources, activeSourceIds);
 }
 
-// ─── Phrase search (exact adjacent substring) ───────────────────────────────
+// ─── Phrase search (exact adjacent phrase) ───────────────────────────────────
 
 /**
- * Search all in-memory passages for an exact phrase (adjacent word match).
- * Normalises both the query and the passage text the same way the concordance
- * index does (strip curly apostrophes, lowercase) before the substring test.
- *
- * This is O(n) over all passages but is fast enough for client-side use since
- * the full passage lookup is already in memory.
+ * Search all in-memory passages for the whole query as an exact adjacent phrase,
+ * using the shared tokenizer/analysis for matching, offsets and ranking.
  */
 function _searchByPhrase(
 	rawQuery: string,
@@ -582,44 +632,19 @@ function _searchByPhrase(
 	activeSources: Source[],
 	activeSourceIds: Set<string>
 ): GroupedResults[] {
-	const normalised = rawQuery.trim().replace(/['''’ʼ]/g, '').toLowerCase();
-	if (!normalised) return [];
+	const phrase = termsFromText(rawQuery);
+	if (phrase.length === 0) return [];
 
-	const resultsBySource = new Map<string, SearchResult[]>();
-
+	const candidates: Candidate[] = [];
 	for (const raw of Object.values(passages)) {
 		const passage = raw as Passage;
 		if (!activeSourceIds.has(passage.sourceId)) continue;
-		const normText = passage.text.replace(/['''’ʼ]/g, '').toLowerCase();
-		if (!normText.includes(normalised)) continue;
-
-		const source = getSourceById(passage.sourceId);
-		if (!source) continue;
-
-		// Wrap rawQuery in quotes so buildKwic treats it as a phrase:
-		// - findMatchingSentenceIndex locates the sentence containing the adjacent phrase
-		// - highlightAll marks the entire phrase as a contiguous <mark> span
-		const phraseQuery = `"${rawQuery}"`;
-		const kwic = buildKwic(passage.text, phraseQuery, source.displayMode, source.contextWords);
-		const citation = buildCitation(passage.text, source.title, passage.chapterRef, passage.pageRef);
-		const result: SearchResult = {
-			passage, source, kwic, citation,
-			notableLabel: getNotableLabel(passage.sourceId, passage.text) ?? undefined
-		};
-
-		if (!resultsBySource.has(source.id)) resultsBySource.set(source.id, []);
-		resultsBySource.get(source.id)!.push(result);
+		const match = analyzePassage(passage.text, [phrase], []);
+		if (!match.hasAllPhrases) continue;
+		candidates.push({ passage, matchedBySynonym: false, highlightTerms: [] });
 	}
 
-	const grouped: GroupedResults[] = [];
-	for (const source of activeSources) {
-		const results = resultsBySource.get(source.id);
-		if (results && results.length > 0) {
-			results.sort((a, b) => a.passage.sequence - b.passage.sequence);
-			grouped.push({ source, results });
-		}
-	}
-	return grouped;
+	return _rankAndGroup(candidates, [phrase], [], activeSources, activeSourceIds);
 }
 
 // ─── Concordance loader ───────────────────────────────────────────────────────

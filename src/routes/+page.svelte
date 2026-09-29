@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { Tag, Info, ChevronRight } from '@lucide/svelte';
-	import { loadSearchIndex, search, searchReady, searchError, concordanceReady } from '$lib/search/index';
+	import { loadSearchIndex, search, searchReady, searchError, concordanceReady, getSuggestionTerms } from '$lib/search/index';
+	import { applySuggestion, moveActiveIndex, type Suggestion } from '$lib/search/suggestions';
 	import { findExceptions } from '$lib/corpus/exceptions';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
 	import type { GroupedResults, KnownException, Passage } from '$lib/types';
@@ -24,6 +25,13 @@
 	let phraseMode = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let todaysReflection = $state<Passage | null>(null);
+
+	// ─── Suggestions (Area 4) ──────────────────────────────────────────────────
+	// Computed synchronously on input from the loaded term dictionary; never
+	// delays or replaces the debounced search below.
+	let suggestions = $state<Suggestion[]>([]);
+	let suggestionsOpen = $state(false);
+	let activeSuggestion = $state(-1);
 
 	const TOPIC_CHIPS = [
 		'Acceptance', 'Resentment', 'Fear', 'Gratitude',
@@ -63,7 +71,36 @@
 
 	// ─── Debounced search ──────────────────────────────────────────────────────
 
+	/** Recompute suggestions for the current input (no dictionary → none). */
+	function refreshSuggestions() {
+		suggestions = getSuggestionTerms(query);
+		suggestionsOpen = suggestions.length > 0;
+		activeSuggestion = -1;
+	}
+
+	function dismissSuggestions() {
+		suggestionsOpen = false;
+		activeSuggestion = -1;
+	}
+
+	/** Selecting a suggestion runs the SAME search path as typing. */
+	function selectSuggestion(term: string) {
+		const next = applySuggestion(query, term);
+		query = next;
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
+		}
+		debouncedQuery = next;
+		runSearch(next);
+		hints = findExceptions(next);
+		syncUrl(next);
+		dismissSuggestions();
+	}
+
 	function handleInput() {
+		// Suggestions update immediately; the debounced search below is untouched.
+		refreshSuggestions();
 		if (debounceTimer) clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
 			debouncedQuery = query;
@@ -74,7 +111,30 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (suggestionsOpen && suggestions.length > 0) {
+			if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				activeSuggestion = moveActiveIndex(activeSuggestion, suggestions.length, 1);
+				return;
+			}
+			if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				activeSuggestion = moveActiveIndex(activeSuggestion, suggestions.length, -1);
+				return;
+			}
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				dismissSuggestions();
+				return;
+			}
+		}
+
 		if (e.key === 'Enter') {
+			if (suggestionsOpen && activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+				e.preventDefault();
+				selectSuggestion(suggestions[activeSuggestion].term);
+				return;
+			}
 			if (debounceTimer) clearTimeout(debounceTimer);
 			debouncedQuery = query;
 			runSearch(query);
@@ -121,12 +181,20 @@
 		}
 	});
 
+	// Suggestions become available once the term dictionary has loaded.
+	$effect(() => {
+		if ($concordanceReady) {
+			untrack(() => refreshSuggestions());
+		}
+	});
+
 	function searchTopic(topic: string) {
 		query = topic.toLowerCase();
 		debouncedQuery = query;
 		runSearch(query);
 		hints = findExceptions(query);
 		syncUrl(query);
+		dismissSuggestions();
 	}
 
 	function toggleSource(sourceId: string) {
@@ -223,9 +291,16 @@
 		<input
 			id="search-input"
 			type="search"
+			role="combobox"
+			aria-expanded={suggestionsOpen && suggestions.length > 0}
+			aria-controls="search-suggestions"
+			aria-haspopup="listbox"
+			aria-autocomplete="list"
+			aria-activedescendant={activeSuggestion >= 0 ? `search-suggestion-${activeSuggestion}` : undefined}
 			bind:value={query}
 			oninput={handleInput}
 			onkeydown={handleKeydown}
+			onblur={dismissSuggestions}
 			placeholder="Search phrases, keywords (e.g., 'higher power')"
 			autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
 			class="w-full rounded border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
@@ -234,6 +309,37 @@
 				   focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400
 				   transition-colors duration-200"
 		/>
+		{#if suggestionsOpen && suggestions.length > 0}
+			<ul
+				id="search-suggestions"
+				role="listbox"
+				aria-label="Search suggestions"
+				class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-auto rounded border
+					   border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg
+					   py-1 transition-colors duration-200"
+			>
+				{#each suggestions as suggestion, i (suggestion.term)}
+					<li
+						id={`search-suggestion-${i}`}
+						role="option"
+						aria-selected={i === activeSuggestion}
+						class="px-4 py-2 text-sm cursor-pointer text-[#1A1A1A] dark:text-slate-200
+							   {i === activeSuggestion
+								? 'bg-navy/10 dark:bg-amber-400/20'
+								: 'hover:bg-stone-100 dark:hover:bg-slate-800'}"
+						onmousedown={(e) => {
+							e.preventDefault();
+							selectSuggestion(suggestion.term);
+						}}
+					>
+						{suggestion.term}
+						{#if suggestion.kind === 'didyoumean'}
+							<span class="sr-only">(did you mean)</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</div>
 
 	<!-- ── FILTER SOURCES (always) ──────────────────────────────────────────── -->
@@ -270,6 +376,7 @@
 					runSearch(query);
 					hints = findExceptions(query);
 					syncUrl(query);
+					dismissSuggestions();
 				}}
 				aria-pressed={phraseMode}
 				aria-label={phraseMode ? 'Exact phrase mode on — click to switch to word match' : 'Word match mode — click to search exact phrase'}
@@ -564,10 +671,10 @@
 									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									<p class="text-[#1A1A1A] dark:text-slate-200 leading-relaxed text-sm">{@html result.kwic}</p>
 									<div class="mt-3 flex flex-wrap items-center gap-4">
-										{#if group.source.displayMode === 'full-text'}
-											<button type="button"
-												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"											aria-label="Copy passage to clipboard"												onclick={() => copyPassage(result.citation)}>Copy</button>
-										{/if}
+										<button type="button"
+											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"
+											aria-label="Copy excerpt to clipboard"
+											onclick={() => copyPassage(result.citation)}>Copy</button>
 										{#if group.source.displayMode === 'full-text'}
 											<a href="/passage/{result.passage.sourceId}/{result.passage.id}"
 												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors">

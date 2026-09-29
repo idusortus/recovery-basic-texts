@@ -1,7 +1,10 @@
 {
-  "god": ["higher power", "creator", "spirit of the universe", "god of our understanding"],
-  "fear": ["anxiety", "afraid", "dread", "terror", "fright"],
-  "resentment": ["anger", "rage", "bitterness", "grudge"],
-  "acceptance": ["surrender", "willingness", "letting go"],
-  "sobriety": ["recovery", "abstinence", "sober", "clean"]
+	"god": ["higher power", "creator", "spirit of the universe", "god of our understanding"],
+	"higher power": ["god", "creator", "spirit of the universe", "god of our understanding"],
+	"creator": ["god", "higher power", "spirit of the universe", "god of our understanding"],
+	"spirit of the universe": ["god", "higher power", "creator", "god of our understanding"],
+	"fear": ["anxiety", "afraid", "dread", "terror", "fright"],
+	"resentment": ["anger", "rage", "bitterness", "grudge"],
+	"acceptance": ["surrender", "willingness", "letting go"],
+	"sobriety": ["recovery", "abstinence", "sober", "clean"]
 }

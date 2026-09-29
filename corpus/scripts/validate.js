@@ -16,6 +16,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { computeIndexVersion } from './index-version.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = resolve(__filename, '../../..');
@@ -198,6 +199,30 @@ for (const source of sourcesToCheck) {
 			}
 			pass(`Pagemap: ${pagemap.entries.length} entries valid`);
 		}
+	}
+}
+
+// ─── Guard: emitted index must match a fresh hash of inputs + schema ────────
+
+console.log('\n[validate] Index freshness: static/index/index-meta.json');
+
+const indexMetaPath = join(repoRoot, 'static', 'index', 'index-meta.json');
+if (!existsSync(indexMetaPath)) {
+	pass('No prebuilt index present — freshness guard skipped (run `npm run build:index` after changes)');
+} else {
+	try {
+		const meta = JSON.parse(readFileSync(indexMetaPath, 'utf-8'));
+		const fresh = computeIndexVersion(repoRoot, registry);
+		if (meta.version === fresh) {
+			pass(`index-meta.version matches a fresh hash (${fresh})`);
+		} else {
+			fail(
+				`index-meta.version "${meta.version}" is stale — expected "${fresh}". ` +
+					'Run `npm run build:index` (a corpus, normalizer or index-schema change requires a rebuild).'
+			);
+		}
+	} catch (e) {
+		fail(`Failed to read/parse ${indexMetaPath}: ${e.message}`);
 	}
 }
 

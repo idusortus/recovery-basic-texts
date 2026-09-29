@@ -11,8 +11,9 @@
  *   static/index/concordance.json   — normalized term → [{passageId, offsets}]
  *   static/index/index-meta.json    — { version, builtAt, sources, concordance }
  *
- * Version is a SHA-256 content hash of all corpus inputs combined deterministically,
- * so identical inputs always produce the same version hash.
+ * Version is a deterministic SHA-256 over the corpus inputs AND the
+ * tokenizer/index-schema code (see ./index-version.mjs), so identical inputs
+ * always produce the same version and a normalizer/format change bumps it.
  *
  * Usage:  node corpus/scripts/build-index.mjs
  * Wired into: npm run build via package.json
@@ -21,12 +22,13 @@
  * Issue B — concordance index
  */
 
-import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import MiniSearch from 'minisearch';
 import { buildConcordance } from './concordance-utils.mjs';
+import { computeIndexVersion } from './index-version.mjs';
+import { tokenize, processTerm } from '../../src/lib/search/normalize.js';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
@@ -109,33 +111,25 @@ console.log(`[build-index] Total: ${allPassages.length} passages across ${Object
 
 // ─── Build minisearch index ───────────────────────────────────────────────────
 
-/**
- * Strip apostrophes (straight and curly) from a term so contractions are indexed
- * as single tokens (haven't → havent). Applied to indexed fields; the same
- * normalization is applied at query time in src/lib/search/index.ts.
- * F4a — features-001-plan
- */
-function normalizeForIndex(str) {
-	return str.replace(/['\u2018\u2019\u02bc]/g, '');
-}
-
+// Tokenization comes from the shared canonical module (src/lib/search/normalize.ts)
+// so MiniSearch tokenizes indexed fields and queries exactly like the concordance
+// index. No separate field-level normalization is applied — processTerm handles
+// lowercasing/apostrophe stripping on both sides.
 const ms = new MiniSearch({
 	fields: ['text', 'title', 'chapterRef'],
 	storeFields: ['id', 'sourceId'],
 	idField: 'id',
-	searchOptions: {
-		boost: { text: 2 },
-		prefix: false,
-		fuzzy: 0.15
-	}
+	tokenize,
+	processTerm
 });
 
 ms.addAll(
 	allPassages.map((p) => ({
-		...p,
-		text: normalizeForIndex(p.text),
-		title: normalizeForIndex(p.title),
-		chapterRef: p.chapterRef ? normalizeForIndex(p.chapterRef) : null
+		id: p.id,
+		sourceId: p.sourceId,
+		title: p.title ?? '',
+		chapterRef: p.chapterRef ?? '',
+		text: p.text
 	}))
 );
 
@@ -160,25 +154,10 @@ console.log(`[build-index] Concordance: ${termCount} terms, ${totalOccurrences} 
 
 // ─── Compute deterministic version hash ──────────────────────────────────────
 
-// Hash the inputs in a deterministic order (source IDs sorted, then passage IDs sorted)
-const hash = createHash('sha256');
-
-for (const source of sortedSources) {
-	if (!source.enabled) continue;
-	const corpusPath = join(corpusRoot, 'sources', `${source.id}.json`);
-	if (existsSync(corpusPath)) {
-		// Hash the raw file bytes for determinism
-		hash.update(source.id + ':');
-		hash.update(readFileSync(corpusPath));
-		hash.update('\n');
-	}
-}
-
-// Also hash the registry itself
-hash.update('registry:');
-hash.update(readFileSync(registryPath));
-
-const version = hash.digest('hex').slice(0, 16);
+// The version covers the corpus inputs AND the tokenizer/index-schema code, so a
+// normalizer or index-format change invalidates cached clients. See
+// ./index-version.mjs (also used by ./validate.js to detect a stale index).
+const version = computeIndexVersion(repoRoot, registry);
 
 // ─── Emit output files ────────────────────────────────────────────────────────
 

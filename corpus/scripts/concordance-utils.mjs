@@ -4,24 +4,27 @@
  * Shared utilities for building and working with the concordance index.
  * Imported by both build-index.mjs and test-concordance-offsets.mjs.
  *
+ * Normalization and tokenization come from the one canonical module
+ * (src/lib/search/normalize.js) that the app and the index builder also use,
+ * so the two search paths tokenize identically.
+ *
  * Issue B — PR 2
+ * Area 1 — search-overhaul (shared normalization)
  */
+
+import { normalizeTerm, scanTokens } from '../../src/lib/search/normalize.js';
 
 // ─── Normalization ────────────────────────────────────────────────────────────
 
-/** The apostrophe-character set stripped during normalization. */
-const APOSTROPHE_RE = /['\u2018\u2019\u02bc]/g;
-
 /**
- * Normalize a token for concordance lookup:
- * strip apostrophes and lowercase.
- * Matches the normalization applied by build-index.mjs for MiniSearch.
+ * Normalize a token for concordance lookup: strip apostrophes and lowercase.
+ * Kept for existing importers; delegates to the shared normalizer.
  *
  * @param {string} str
  * @returns {string}
  */
 export function normalizeToken(str) {
-	return str.replace(APOSTROPHE_RE, '').toLowerCase();
+	return normalizeTerm(str);
 }
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
@@ -41,16 +44,11 @@ export function normalizeToken(str) {
  */
 export function tokenizeWithPositions(text) {
 	const results = [];
-	// Match words including internal apostrophes (contractions like "can't")
-	// Also matches digits and accented Latin characters for future sources
-	const re = /[A-Za-z\u00C0-\u024F\d]+(?:['\u2018\u2019\u02bc][A-Za-z]+)*/g;
-	let m;
-	while ((m = re.exec(text)) !== null) {
-		const original = m[0];
-		const normalized = normalizeToken(original);
+	for (const { raw, start, end } of scanTokens(text)) {
+		const normalized = normalizeTerm(raw);
 		// Skip single-char tokens — too short to be meaningful query terms
 		if (normalized.length < 2) continue;
-		results.push({ normalized, start: m.index, end: m.index + original.length });
+		results.push({ normalized, start, end });
 	}
 	return results;
 }

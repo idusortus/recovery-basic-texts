@@ -1,0 +1,73 @@
+{
+	"sentences": [
+		{
+			"text": "Meet Dr. Bob. He kept coming back.",
+			"expected": ["Meet Dr. Bob.", "He kept coming back."]
+		},
+		{
+			"text": "A.A. is a fellowship. It works.",
+			"expected": ["A.A. is a fellowship.", "It works."]
+		},
+		{
+			"text": "See p.58. Then he left.",
+			"expected": ["See p.58.", "Then he left."]
+		},
+		{
+			"text": "1. We admitted we were powerless. 2. We came to believe.",
+			"expected": ["1. We admitted we were powerless.", "2. We came to believe."]
+		},
+		{
+			"text": "Bill W. and Dr. Bob started it.",
+			"expected": ["Bill W. and Dr. Bob started it."]
+		},
+		{
+			"text": "82 ALCOHOLICS ANONYMOUS forget, so can she. It is better, however, that one does not needlessly name a person.",
+			"expected": [
+				"82 ALCOHOLICS ANONYMOUS forget, so can she.",
+				"It is better, however, that one does not needlessly name a person."
+			]
+		},
+		{
+			"text": "INTO ACTION 81 Maybe we are divorced. She was furious.",
+			"expected": ["INTO ACTION 81 Maybe we are divorced.", "She was furious."]
+		}
+	],
+	"queries": [
+		{
+			"query": "tornado",
+			"passageId": "big-book-2ed-chapter-6-into-action-p0142",
+			"sentence": "The alcoholic is like a tornado roaring his way through the lives of others.",
+			"marks": ["tornado"]
+		},
+		{
+			"query": "Haven't got",
+			"passageId": "big-book-2ed-chapter-11-a-vision-for-you-p0251",
+			"sentence": "But obviously you cannot transmit something you haven't got.",
+			"marks": ["haven't", "got"]
+		},
+		{
+			"query": "Havent got",
+			"passageId": "big-book-2ed-chapter-11-a-vision-for-you-p0251",
+			"sentence": "But obviously you cannot transmit something you haven't got.",
+			"marks": ["haven't", "got"]
+		},
+		{
+			"query": "higher power",
+			"passageId": "big-book-2ed-chapter-3-more-about-alcoholis-p0088",
+			"sentence": "His defense must come from a Higher Power.",
+			"marks": ["Higher", "Power"]
+		},
+		{
+			"query": "acceptance",
+			"passageId": "big-book-2ed-appendices-p0256",
+			"sentence": "We think that each group should soon achieve this ideal; that any public solicitation of funds using the name of Alcoholics Anonymous is highly dangerous, whether by groups, clubs, hospitals, or other outside agencies; that acceptance of large gifts from any source, or of contributions carrying any obligation whatever, is unwise.",
+			"marks": ["acceptance"]
+		},
+		{
+			"query": "Into Action",
+			"passageId": "big-book-2ed-front-matter-p0002",
+			"sentence": "CONTENTS Chapter Page Preface xi Foreword to First Edition xiii Foreword xv The Doctor's Opinion xxiii 1 Bill's Story 1 2 There Is a Solution 17 3 More About Alcoholism 30 4 We Agnostics 44 5 How It Works 58 6 Into Action 72 7 Working with Others 89 8 To Wives 104 9 The Family Afterward 122 10 To Employers 136 11 A Vision for You 151",
+			"marks": ["Into", "Action"]
+		}
+	]
+}

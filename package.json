@@ -12,6 +12,8 @@
     "verify:citations": "node corpus/scripts/verify-citations.mjs",
     "test:concordance": "node corpus/scripts/test-concordance-offsets.mjs",
     "test:feedback": "node scripts/test-feedback.mjs",
+    "test:ingest": "python3 corpus/scripts/test-ingest-headers.py",
+    "test:search": "node corpus/scripts/build-index.mjs && node scripts/test-search.mjs",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

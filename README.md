@@ -10,6 +10,7 @@ Live at: **basictexts.org**
 
 - Full-text keyword and phrase search across multiple AA literature sources in one experience
 - KWIC (keyword-in-context) results with source labels, chapter/date references, and highlights
+- Search-box suggestions (prefix + did-you-mean) and synonym/concept grouping, all offline
 - Installable PWA — works fully offline after first load
 - Shareable search and passage deep-links
 - Today's Daily Reflection teaser on the home dashboard
@@ -36,6 +37,54 @@ pnpm install
 pnpm run build:index
 pnpm run dev
 ```
+
+### Tests (no test framework, no extra dependencies)
+
+```bash
+pnpm run test:search       # shared normalization + MiniSearch/concordance two-path parity
+pnpm run test:concordance  # concordance tokenizer offsets
+pnpm run test:feedback     # feedback issue builder
+pnpm run test:ingest       # ingest Stage 3 running-header stripping (python3)
+```
+
+`test:search` rebuilds `static/index` first, then imports the real app search
+service (`src/lib/search/index.ts`) through a tiny Node loader
+(`scripts/search-test-loader.mjs`) and exercises both search paths. It also runs
+the golden-file suite (`scripts/fixtures/search-golden.json`) over sentence
+boundaries and highlighted spans.
+
+### Search normalization, ranking, and snippets
+
+`src/lib/search/normalize.js` is the single canonical normalizer used by the
+index builder (`corpus/scripts/build-index.mjs`), the concordance tokenizer
+(`corpus/scripts/concordance-utils.mjs`) and the query side
+(`src/lib/search/index.ts`). It lowercases, strips apostrophes (so `Haven't` ==
+`Havent`), folds quotes/dashes, and treats hyphens as separators, so both search
+paths match contractions, punctuation and hyphenation identically. It is a plain
+ESM module with JSDoc types, so the Node build scripts import it natively (no
+TypeScript type-stripping needed at build/deploy time) and Vite bundles the same
+file into the app.
+
+The prebuilt index version (`static/index/index-meta.json`) is a hash of the
+corpus inputs **and** the tokenizer/index-schema code
+(`corpus/scripts/index-version.mjs`), so a normalizer or format change bumps it;
+`npm run validate:corpus` fails if the emitted index is stale.
+
+`src/lib/search/match.ts` is the single source of truth for where and how well a
+query matches a passage: merged match offsets, the best-match anchor, and the
+shared relevance score. Both paths rank with it, so ordering and highlighting
+agree. `src/lib/search/kwic.ts` clips per display mode (`full-text` = whole
+sentences; `snippet` = at most `contextWords` words total, capped at ~30;
+`concordance-only` = `contextWords` each side) and never renders a protected
+passage in full. Copying a result copies that same clipped excerpt for protected
+sources (full text only for `full-text`).
+
+`src/lib/search/suggestions.ts` derives ranked prefix and did-you-mean
+suggestions from the loaded concordance term dictionary — offline, no extra
+artifact. `src/lib/corpus/synonyms.ts` treats `corpus/synonyms.json` as an
+undirected concept graph, so searching any member of a group (for example `God`,
+`Higher Power`, `Creator`, `Spirit of the Universe`) surfaces the others;
+synonym expansion applies to bare-keyword queries only.
 
 ## Feedback form (maintainers)
 
@@ -81,6 +130,7 @@ corpus/                     — source data (source of truth)
   scripts/
     build-index.mjs         — prebuilds the search index
     validate.js             — corpus schema validation
+    test-ingest-headers.py  — Stage 3 running-header stripping test
   CORPUS-GUIDE.md           — authoritative guide for sourcing and ingesting corpus
 
 docs/
@@ -94,6 +144,9 @@ src/
     corpus/registry.ts      — loads and validates sources.json
     corpus/exceptions.ts    — known-exception hint matcher
     search/index.ts         — MiniSearch hydration + search
+    search/normalize.js     — canonical normalization/tokenization (shared with build scripts)
+    search/match.ts         — shared match offsets + relevance score (both search paths)
+    search/suggestions.ts   — prefix + did-you-mean suggestions from the concordance
     search/kwic.ts          — KWIC clipping + highlight (XSS-safe)
     stores/                 — online/offline, toast, version check, PWA install
     components/             — Nav, ExternalLink, Toasts

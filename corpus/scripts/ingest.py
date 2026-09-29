@@ -138,6 +138,28 @@ _HYPHEN_EOL_RE = re.compile(r"([A-Za-z]+)-\n[ \t]*([A-Za-z]+)")
 # main single-newline pass.
 _PARA_HYPHEN_RE = re.compile(r"([A-Za-z]+)-\n{2,}[ \t]*([a-z]+)")
 
+# ---------------------------------------------------------------------------
+# Running header/footer pattern (Stage 3)
+# ---------------------------------------------------------------------------
+# A page number adjacent to a short ALL-CAPS running title, e.g.
+#   "82 ALCOHOLICS ANONYMOUS"   (number first — even pages)
+#   "INTO ACTION 81"            (number last  — odd pages)
+# The title must contain at least two all-caps words, which excludes
+# legitimate single-word headings such as "STEP 12".  These patterns are only
+# applied to lines near a <<<PAGE N>>> marker (see stage_3_strip), so genuine
+# all-caps prose is never stripped.
+_CAPS_RUN = r"[A-Z][A-Z0-9.,'’\-]*(?: [A-Z][A-Z0-9.,'’\-]*)+"
+_RUNNING_HEADER_NUMBER_FIRST_RE = re.compile(rf"^\d{{1,4}}\s+{_CAPS_RUN}$")
+_RUNNING_HEADER_NUMBER_LAST_RE = re.compile(rf"^{_CAPS_RUN}\s+\d{{1,4}}$")
+
+
+def _is_running_header(line: str) -> bool:
+    """True when `line` looks like a running page header/footer with a page number."""
+    return bool(
+        _RUNNING_HEADER_NUMBER_FIRST_RE.match(line)
+        or _RUNNING_HEADER_NUMBER_LAST_RE.match(line)
+    )
+
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -521,6 +543,7 @@ def stage_3_strip(
     # Auto-detect running headers/footers by proximity to page markers.
     # "Boundary region" = lines within 2 positions of a <<<PAGE N>>> line.
     page_boundary_freq: Counter[str] = Counter()
+    boundary_indices: set[int] = set()
     for i, line in enumerate(lines):
         if PAGE_MARKER_RE.match(line.strip()):
             for offset in (-2, -1, 1, 2):
@@ -532,6 +555,7 @@ def stage_3_strip(
                             and len(candidate) < 40
                             and not PAGE_MARKER_RE.match(candidate)):
                         page_boundary_freq[candidate] += 1
+                        boundary_indices.add(j)
 
     # Lines appearing ≥3 times at page boundaries are auto-stripped
     auto_strip: set[str] = {
@@ -546,7 +570,7 @@ def stage_3_strip(
     kept_lines:   list[str] = []
     removal_log:  list[str] = []
 
-    for line in lines:
+    for i, line in enumerate(lines):
         s = line.strip()
 
         # Always preserve page markers (structural, not content)
@@ -574,7 +598,13 @@ def stage_3_strip(
             removed = True
             reason  = "digit-only"
 
-        # Priority 3: auto-detected header/footer
+        # Priority 3: running header/footer (page number + ALL-CAPS title).
+        # Only near a page marker, so genuine all-caps prose is never stripped.
+        if not removed and i in boundary_indices and _is_running_header(s):
+            removed = True
+            reason  = "running header/footer"
+
+        # Priority 4: auto-detected header/footer (exact repeated line)
         if not removed and s in auto_strip:
             removed = True
             reason  = "auto header/footer"
