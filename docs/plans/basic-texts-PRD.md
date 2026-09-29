@@ -53,8 +53,8 @@ Secondary: Sponsors, group study facilitators, and anyone interested in recovery
 
 ### 3.3 Shareable Links
 - Every search result is deep-linkable: `basictexts.org/search?q=acceptance`
-- Individual passage results are linkable: `basictexts.org/passage/big-book-1ed/p45-para2`
-  - **Passage ID scheme (stable contract):** a passage's deep link is `/passage/<sourceId>/<passageId>`, where `<passageId>` is the `id` field from the corpus file. Once a specific source corpus (e.g. `big-book-1ed`) is ingested and published, its passage IDs are **frozen forever** — sources only ever expand with new passages, never renumber existing ones. This guarantees shared links never break.
+- Individual passage results are linkable: `basictexts.org/passage/big-book-2ed/big-book-2ed-chapter-5-how-it-works-p0105`
+  - **Passage ID scheme (stable contract):** a passage's deep link is `/passage/<sourceId>/<passageId>`, where `<passageId>` is the `id` field from the corpus file. Once a specific source corpus (e.g. `big-book-2ed`) is ingested and published, its passage IDs are **frozen forever** — sources only ever expand with new passages, never renumber existing ones. This guarantees shared links never break.
 - Web Share API integration — native share sheet on mobile, clipboard fallback on desktop
 - Share button appears on individual result cards and on the search results page
 
@@ -108,11 +108,10 @@ Secondary: Sponsors, group study facilitators, and anyone interested in recovery
   - Display mode explanation ("full text shown" vs "concordance only — link to official source")
   - Links to: official purchase page, free online version (if available)
 - Curated free resources section:
-  - aa.org/the-big-book
-  - anonpress.org/bb (public domain full text)
-  - anonpress.org/pdf (free PDF)
+  - aa.org/the-big-book (official)
+  - Free 2nd-edition Big Book PDF — the same URL as `corpus/sources.json` `freeUrl` (https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf)
   - silkworth.net (AA history archive)
-  - archive.org Big Book scan
+  - archive.org Big Book scan (external 1st-edition scan)
   - aa.org/daily-reflections
 
 ### 4.6 About
@@ -125,11 +124,11 @@ Secondary: Sponsors, group study facilitators, and anyone interested in recovery
 - **Support section (reserved space):** a clearly delineated, non-intrusive area for "Buy me a coffee / Ko-fi" and "GitHub Sponsors" links. Built as a small, easily-removable component; calm styling, no nag, no ads. Placeholder links acceptable for v1 until accounts exist.
 
 ### 4.7 Known-Exceptions Hints
-Some famous passages and terms people search for are **not** in the legally available v1 corpus (the public-domain 1st-edition Big Book). Rather than return a confusing empty/partial result, surface a curated hint. The list is data-driven (a small JSON file, e.g. `corpus/known-exceptions.json`) so it can grow as logging (§7.4) reveals more such gaps.
+Some famous passages and terms people search for are **not** in the legally available v1 corpus (the public-domain 2nd-edition Big Book). Rather than return a confusing empty/partial result, surface a curated hint. The list is data-driven (a small JSON file, e.g. `corpus/known-exceptions.json`) so it can grow as logging (§7.4) reveals more such gaps.
 
 Seed entries for v1:
 - **"acceptance" / "acceptance was the answer":** The well-known "Acceptance" passage ("And acceptance is the answer to all my problems today…") is from a personal story added in the **3rd edition**, which is **not** public domain and not in our corpus. Hint: "Looking for the well-known *Acceptance* passage? It's from a later edition we can't reproduce — read it at aa.org →".
-- **"sponsor" / "sponsee" / "sponsorship":** The 1st-edition Big Book does **not** contain these words. Hint: "The 1st-edition Big Book predates the word *sponsor* — sponsorship is discussed in later AA literature."
+- **"sponsor" / "sponsee" / "sponsorship":** The 2nd-edition Big Book does **not** contain these words. Hint: "The public-domain 2nd-edition Big Book in our corpus does not contain the words \"sponsor\", \"sponsee\", or \"sponsorship\" — sponsorship is discussed in later AA literature, including the 12&12 and AA service materials."
 
 Each exception entry shape: `{ "match": ["acceptance", "acceptance was the answer"], "title": "...", "body": "...", "link": { "label": "Read at aa.org →", "url": "https://www.aa.org/..." } | null }`. Matching is case-insensitive against the submitted query. The hint renders above the normal results, never replacing them.
 
@@ -211,7 +210,7 @@ The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sour
 
 | ID | Title | Short | Copyright | Mode | Free URL |
 |---|---|---|---|---|---|
-| `big-book-1ed` | Alcoholics Anonymous (1st Edition) | Big Book | Public domain (US) | `full-text` | anonpress.org/bb |
+| `big-book-2ed` | Alcoholics Anonymous (2nd Edition) | Big Book | Public domain (US) | `full-text` | portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf |
 | `twelve-steps-traditions` | Twelve Steps and Twelve Traditions | 12&12 | Needs verification — start as `snippet`, upgrade if PD confirmed | `snippet` | aa.org |
 | `twelve-traditions` | The Twelve Traditions | Traditions | Likely PD (same vintage as Steps) | `full-text` or `snippet` | aa.org |
 | `daily-reflections` | Daily Reflections | DR | Protected © AAWS | `concordance-only` | aa.org/daily-reflections |
@@ -439,7 +438,7 @@ These are explicitly out of scope for MVP. Document them so the agent doesn't bu
 
 - [x] Scaffold SvelteKit + TypeScript + Tailwind + `@vite-pwa/sveltekit`
 - [x] Define registry/passage/result TypeScript types (§6)
-- [x] Load Big Book 1st Edition corpus into `/corpus/sources/`
+- [x] Load Big Book 2nd Edition corpus into `/corpus/sources/`
 - [x] `pnpm run build:index` prebuild script → `static/index/*` (§7.2)
 - [x] Client-side `minisearch` search service + KWIC/highlight per `displayMode`
 - [x] Functional search results page
@@ -495,7 +494,7 @@ When implementing this PRD, the agent should:
 
 - UI prototype (design reference only): `proto/google-oneshot` — see §8.4 for what to carry forward
 - 164andMore (existing concordance, print/Kindle): https://www.164andmore.com
-- Anonymous Press (public domain Big Book text): https://anonpress.org/bb
+- Free 2nd-edition Big Book PDF (same as `corpus/sources.json` `freeUrl`): https://www.portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf
 - AA Daily Reflections: https://www.aa.org/daily-reflections
 - AAWS copyright policy: https://www.aa.org/terms-of-use
 - Cloudflare Pages docs: https://developers.cloudflare.com/pages

@@ -67,7 +67,7 @@
 				access the full texts.
 			</p>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed mt-3">
-				Public domain texts (the 1st-edition Big Book) are displayed in full. Protected texts are
+				Public domain texts (the 2nd-edition Big Book) are displayed in full. Protected texts are
 				shown only as short concordance excerpts or snippets. If AAWS or any rights holder
 				requests a change, we will adjust promptly.
 			</p>
@@ -82,9 +82,9 @@
 				Copyright
 			</h2>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed">
-				The 1st-edition Big Book (1939) entered the public domain in the United States because
+				The 2nd-edition Big Book (1955) is in the public domain in the United States because
 				AAWS did not renew its copyright — a matter of settled public record, confirmed by the
-				U.S. Copyright Office renewal records. The 2nd-edition Big Book (1955) is similarly
+				U.S. Copyright Office renewal records. The 1st-edition Big Book (1939) is similarly
 				public domain for the same reason.
 			</p>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed mt-3">
@@ -160,6 +160,32 @@
 				</ExternalLink>
 				for full instructions, copyright evaluation criteria, and ingestion procedures.
 			</p>
+		</section>
+
+		<!-- Feedback (anonymous) -->
+		<section
+			aria-labelledby="feedback"
+			class="rounded border border-stone-200 dark:border-slate-700 px-5 py-4"
+		>
+			<h2
+				id="feedback"
+				class="font-serif text-lg font-semibold text-navy dark:text-slate-200 mb-2"
+			>
+				Send feedback
+			</h2>
+			<p class="text-stone-500 dark:text-slate-400 text-sm leading-relaxed mb-3">
+				Found a bug, or have an idea for an improvement? Send it straight to the maintainer's
+				GitHub tracker. No account or sign-in is needed, and we don't ask for personal
+				details. Your IP address isn't stored or logged — it's used briefly to rate-limit
+				abuse and sent to Cloudflare only to verify the challenge.
+			</p>
+			<a
+				href="/feedback"
+				class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
+					   bg-navy text-white hover:bg-navy/90 transition-colors"
+			>
+				Send feedback →
+			</a>
 		</section>
 
 		<!-- Support (reserved) -->

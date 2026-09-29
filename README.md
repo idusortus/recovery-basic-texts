@@ -37,13 +37,44 @@ pnpm run build:index
 pnpm run dev
 ```
 
+## Feedback form (maintainers)
+
+The anonymous `/feedback` page files each report as a GitHub issue. It is
+optional for local search work — the rest of the app runs without it.
+
+Local development:
+
+1. `cp .env.example .env` (the file is gitignored).
+2. `.env.example` ships with Cloudflare's published Turnstile **test** keys, so
+   the form works locally with no Cloudflare account. Never use test keys in
+   production — the server logs a loud warning when it sees one.
+
+Production setup (secrets are per-environment, never committed):
+
+```bash
+wrangler pages secret put TURNSTILE_SECRET_KEY --project-name basictexts
+wrangler pages secret put GITHUB_TOKEN --project-name basictexts
+```
+
+- `PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_HOSTNAMES` are non-secret runtime
+  `vars` in `wrangler.jsonc`.
+- `FEEDBACK_RATE_LIMIT` is the KV binding behind the best-effort per-IP limit;
+  it is declared under `kv_namespaces` in `wrangler.jsonc` alongside `SEARCH_LOG`.
+  Local `wrangler`/`vite dev` state is written to `.wrangler/` (gitignored).
+- The repo must already define the issue labels `from-app` plus `suggestion`
+  (for suggestions) or `bug` (for bug reports). A missing label makes GitHub
+  return 422 and the form shows the "not set up" message instead of filing. Both
+  labels (and `bug`) already exist on this repository.
+
+Run the dependency-free feedback-logic tests with `pnpm run test:feedback`.
+
 ## Project structure
 
 ```
 corpus/                     — source data (source of truth)
   sources.json              — source registry (metadata, copyright, display mode)
   sources/
-    big-book-1ed.json       — Big Book 1st edition passages (public domain)
+    big-book-2ed.json       — Big Book 2nd edition passages (public domain)
     twelve-steps-traditions.json
     daily-reflections.json
   known-exceptions.json     — curated hints for common search terms not in corpus

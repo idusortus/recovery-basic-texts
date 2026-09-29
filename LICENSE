@@ -25,7 +25,7 @@ SOFTWARE.
 Note on corpus content:
 The application code in this repository is MIT-licensed. The corpus data files
 under corpus/sources/ have their own copyright status documented in
-corpus/CORPUS-GUIDE.md. Public-domain texts (e.g. the 1st Edition Big Book)
+corpus/CORPUS-GUIDE.md. Public-domain texts (e.g. the 2nd Edition Big Book)
 are included directly; protected texts are indexed for search purposes only
 and are never rendered or reproduced in full (see PRD §8.4 for the display-mode
 copyright posture). This project is not affiliated with or endorsed by

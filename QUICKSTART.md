@@ -69,7 +69,7 @@ pnpm run check
 corpus/
   sources.json              — source registry (metadata, copyright, display mode)
   sources/
-    big-book-1ed.json       — Big Book 1st edition passages
+    big-book-2ed.json       — Big Book 2nd edition passages
     twelve-steps-traditions.json
   known-exceptions.json     — curated hints for common search terms
   scripts/

@@ -49,6 +49,10 @@ pnpm run build         # full production build (runs build:index + vite build)
 
 See [QUICKSTART.md](QUICKSTART.md) for the full local setup guide.
 
+For the anonymous feedback form (`/feedback`) — Turnstile/GitHub secrets, the
+`FEEDBACK_RATE_LIMIT` KV binding, and the required issue labels — see the
+"Feedback form (maintainers)" section in [README.md](README.md).
+
 ---
 
 ## Code conventions

@@ -33,16 +33,16 @@ NOTE — Line-join sequencing
   in Stage 1, but the audit trail is complete.
 
 Run as:
-  python ingest.py --source-id big-book-1ed \\
-                   --input ./raw/big-book-1ed.pdf \\
-                   --chapter-map ./raw/big-book-1ed-chapters.json \\
-                   --output ./sources/big-book-1ed.json
+  python ingest.py --source-id big-book-2ed \\
+                   --input ./raw/big-book-2ed.pdf \\
+                   --chapter-map ./raw/big-book-2ed-chapters.json \\
+                   --output ./sources/big-book-2ed.json
 
 For .txt input (PDF stage skipped):
-  python ingest.py --source-id big-book-1ed \\
-                   --input ./raw/big-book-1ed.txt \\
-                   --chapter-map ./raw/big-book-1ed-chapters.json \\
-                   --output ./sources/big-book-1ed.json
+  python ingest.py --source-id big-book-2ed \\
+                   --input ./raw/big-book-2ed.txt \\
+                   --chapter-map ./raw/big-book-2ed-chapters.json \\
+                   --output ./sources/big-book-2ed.json
 """
 
 # Requirements: pdfplumber ftfy pyenchant spacy
@@ -1068,7 +1068,7 @@ def stage_7_generate_ids(
     Generate unique passage IDs and build the final schema-conformant objects.
 
     ID format: {source_id}-{chapter_slug}-p{sequence:04d}
-    Example:   big-book-1ed-chapter-5-how-it-works-p0058
+    Example:   big-book-2ed-chapter-5-how-it-works-p0058
 
     Validates before writing — exits with code 1 on any failure:
     - All IDs unique within this file
@@ -1300,10 +1300,10 @@ def main() -> None:
         epilog="""
 examples:
   # PDF source with chapter map
-  python ingest.py --source-id big-book-1ed \\
-                   --input ./raw/big-book-1ed.pdf \\
-                   --chapter-map ./raw/big-book-1ed-chapters.json \\
-                   --output ./sources/big-book-1ed.json
+  python ingest.py --source-id big-book-2ed \\
+                   --input ./raw/big-book-2ed.pdf \\
+                   --chapter-map ./raw/big-book-2ed-chapters.json \\
+                   --output ./sources/big-book-2ed.json
 
   # Pre-extracted text with custom strip patterns
   python ingest.py --source-id big-book-2ed \\
@@ -1315,7 +1315,7 @@ examples:
     )
     parser.add_argument(
         "--source-id", required=True,
-        help="Unique source identifier (e.g. big-book-1ed)",
+        help="Unique source identifier (e.g. big-book-2ed)",
     )
     parser.add_argument(
         "--input", required=True, type=Path,

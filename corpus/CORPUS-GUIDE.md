@@ -37,7 +37,7 @@ For U.S. works, the main triggers for public domain status are:
 - Published 1928–1963 **and** copyright was not renewed with the Copyright Office
 - Published with a defective copyright notice (no © symbol or missing year/owner)
 
-For AA literature specifically: the 1st and 2nd editions of the Big Book entered the public domain because AAWS failed to renew their copyrights — the 1st edition in 1967, the 2nd edition in 1983. This is not a legal gray area; it is settled and confirmed by AAWS themselves.
+For AA literature specifically: the 1st and 2nd editions of the Big Book entered the public domain because AAWS failed to renew their copyrights — the 1st edition in 1967, the 2nd edition in 1983. This is not a legal gray area; it is settled and confirmed by AAWS themselves. Of these, only the **2nd edition** is currently ingested into our corpus.
 
 **How to verify:** Search the U.S. Copyright Office renewal records at https://cocatalog.loc.gov. Search the Stanford Copyright Renewal Database at https://exhibits.stanford.edu/copyrightrenewals. If a copyright renewal is not on record, the work is public domain.
 
@@ -68,7 +68,7 @@ If only a scanned PDF exists, OCR cleanup is required before ingestion (see Part
 
 ## Part 3 — v1 Sources: Status & Acquisition
 
-> **Big Book 1st Edition removed (v1.1):** The 1st edition corpus was removed pending a proper re-ingestion via the `ingest.py` pipeline. The 2nd edition (1955) is the active full-text Big Book source. When re-adding the 1st edition, source a clean plain-text from anonpress.org and run `ingest.py --input big-book-1ed.txt`. The 1939 text is confirmed public domain (copyright lapsed 1967).
+> **Big Book 2nd Edition only (v1.1+):** The project carries only the 2nd edition (1955) as its Big Book source; the 1st edition is no longer part of the corpus and is not planned for re-ingestion. The 2nd edition is confirmed public domain (copyright lapsed 1983) and is the active `full-text` Big Book source, ingested via the `ingest.py` pipeline into `corpus/sources/big-book-2ed.json`.
 
 ### Source 1 — The Twelve Steps and Twelve Traditions (12&12)
 **Registry ID:** `twelve-steps-traditions`

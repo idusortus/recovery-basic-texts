@@ -6,7 +6,7 @@
  * Exits with code 1 if any validation fails.
  *
  * Usage:  node corpus/scripts/validate.js
- *         node corpus/scripts/validate.js big-book-1ed   (single source)
+ *         node corpus/scripts/validate.js big-book-2ed   (single source)
  *
  * LUW 4 — PRD §6.5
  * Updated for Issue A: validates locator/citation/checksum fields when present,

@@ -59,11 +59,8 @@ New Pages Function functions/api/reflection.ts — fetches https://www.aa.org/da
 Risk: aa.org HTML structure can change — the parser needs occasional maintenance. Document the decision in CORPUS-GUIDE.
 
 Corpus work (no code changes)
-C1 — Complete Big Book 1st Edition corpus
-42-passage stub. The "tornado" passage (Into Action, p.82) and hundreds of others are simply not in the corpus yet. Source the full text from anonpress.org/bb per CORPUS-GUIDE, then pnpm run build:index.
-
-C2 — Add Big Book 2nd Edition as a second source
-big-book-2ed.json stub exists but has no registry entry. Source 2nd-edition text (PD, copyright lapsed 1983), add registry entry, ingest. The 2nd ed adds ~200 pages of personal stories not in the 1st edition — meaningful concordance coverage gain.
+C1 — Complete the Big Book (2nd Edition) corpus
+`corpus/sources/big-book-2ed.json` is the project's only Big Book edition and its active full-text source (2nd ed, 1955; public domain, copyright lapsed 1983); it is registry-listed and already ingested. The corpus is still incomplete — the "tornado" passage (Into Action) and hundreds of others are not yet captured. Source the full text from the 2nd-edition PDF per CORPUS-GUIDE, re-ingest, then `pnpm run build:index`. Passage IDs are frozen, so re-ingestion may only append new passages, never renumber existing ones.
 
 Backburnered
 B1 — AI-generated static semantic index

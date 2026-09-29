@@ -63,13 +63,13 @@ These require your accounts/credentials and cannot be done by an agent. Do them 
 **Suggested LLM:** **Claude Sonnet 4.6** (types are load-bearing across the app).
 
 ### LUW 3 — Big Book corpus ingestion (data prep) ✓
-**Goal:** The 1st-edition Big Book as a clean corpus file with **frozen, stable passage IDs**.
+**Goal:** The 2nd-edition Big Book (the project's only Big Book edition) as a clean corpus file with **frozen, stable passage IDs**.
 **Deliverables:**
-- `corpus/sources/big-book-1ed.json` per CORPUS-GUIDE Part 3 (chapters, foreword, Doctor's Opinion, Dr. Bob's story, Spiritual Experience appendix)
-- Stable ID scheme implemented and documented: `bb1-<pageRef>-p<paraIndex>` (e.g. `bb1-p58-p2`). IDs are frozen once published.
-- Validation: confirm it's the **1st edition** (no 3rd-ed additions; exclude the "Acceptance" personal story)
+- `corpus/sources/big-book-2ed.json` per CORPUS-GUIDE Part 3 (chapters, forewords, Doctor's Opinion, Dr. Bob's story, Spiritual Experience appendix)
+- Stable ID scheme implemented and documented: `{sourceId}-{chapterSlug}-p{sequence:04d}` (e.g. `big-book-2ed-chapter-5-how-it-works-p0105`). IDs are frozen once published.
+- Validation: confirm it's the **2nd edition** (no 3rd-ed additions; exclude the "Acceptance" personal story)
 **Depends on:** LUW 2; CORPUS-GUIDE
-**Acceptance:** `corpus/scripts/validate.js` passes; spot-check known passages (e.g. "How It Works", p.58–60) resolve to correct IDs.
+**Acceptance:** `corpus/scripts/validate.js` passes; spot-check known passages (e.g. "How It Works", p.79) resolve to correct IDs.
 **Suggested LLM:** **Claude Sonnet 4.6** (judgement on edition correctness + ID scheme is a forever-contract).
 
 ### LUW 4 — Prebuilt index build script ✓

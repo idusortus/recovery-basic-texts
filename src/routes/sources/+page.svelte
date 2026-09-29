@@ -14,11 +14,20 @@
 		snippet: 'Short excerpts — links to official source'
 	};
 
+	// The Big Book free resource mirrors the registry so the link cannot drift
+	// from corpus/sources.json (currently the 2nd-edition PDF). The archive.org
+	// entry is an external 1st-edition scan and is labelled as such.
+	const bigBookFree = allSources.find((source) => source.id === 'big-book-2ed')?.freeUrl;
+
 	const FREE_RESOURCES = [
 		{ label: 'Big Book at aa.org', url: 'https://www.aa.org/the-big-book' },
-		{ label: 'Big Book at anonpress.org (full text)', url: 'https://anonpress.org/bb/' },
-		{ label: 'Free PDF at anonpress.org', url: 'https://anonpress.org/pdf/' },
-		{ label: 'Big Book scan at archive.org', url: 'https://archive.org/search?query=alcoholics+anonymous+first+edition' },
+		...(bigBookFree
+			? [{ label: 'Free 2nd-edition Big Book PDF', url: bigBookFree }]
+			: []),
+		{
+			label: 'Big Book 1st-edition scan at archive.org (external)',
+			url: 'https://archive.org/search?query=alcoholics+anonymous+first+edition'
+		},
 		{ label: 'Daily Reflections at aa.org', url: 'https://www.aa.org/daily-reflections' }
 	];
 </script>
