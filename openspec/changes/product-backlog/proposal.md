@@ -22,14 +22,17 @@ item can be promoted into its own spec'd change when it is picked up.
   records where it went.
 - **Enumerate the known gaps by theme** (search quality; content & UX), each with a
   one-line, observable "done when" acceptance note so an item can be judged finished.
-- **Record the one open decision** to confirm: whether to keep only the 2nd-edition Big
-  Book and drop the redundant edition, per `AGENTS.md` ("ask rather than guessing").
+- **Record the edition decision as resolved.** The one decision this backlog tracked —
+  whether to keep only the 2nd-edition Big Book and drop the redundant edition — was
+  confirmed by the maintainer (per `AGENTS.md`, "ask rather than guessing") and is recorded
+  in `decisions.md` (2026-09-29, "Big Book: 2nd edition only (drop the 1st edition)"); its
+  backlog entry (2.5) is closed by that decision, with no further work pending.
 - **Adapt the feedback-to-GitHub flow** carried over from the archived carpool change:
   that flow was signed-in-only, but this repo forbids authentication, so the backlog item
   specifies an **anonymous** feedback path protected by server-verified Cloudflare
   Turnstile plus rate limiting, with a no-PII, server-built issue body.
-- **No behavioral change to the app ships with this change.** Every backlog item is future
-  work and stays unchecked; each is promoted to its own spec'd change when picked up.
+- **No behavioral change to the app ships with this change.** Every unimplemented item
+  stays unchecked; each is promoted to its own spec'd change when picked up.
 
 Non-goals:
 

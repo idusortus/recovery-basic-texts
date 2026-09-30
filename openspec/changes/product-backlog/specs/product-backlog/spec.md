@@ -17,7 +17,8 @@ is left in place as the prior source and is not edited; the backlog supersedes i
 intent recorded in `proposal.md`. Entries SHALL remain open (unchecked) while they are
 future work; an entry is not a record of completed work. A promoted entry SHALL also stay
 unchecked and SHALL be marked with the change it was promoted into, rather than being
-checked off.
+checked off. A decision-closed entry SHALL also remain unchecked and SHALL carry a
+`→ resolved (<pointer>)` annotation naming where the resolving decision is recorded.
 
 #### Scenario: Every gap from the prior source appears once
 

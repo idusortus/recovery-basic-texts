@@ -9,10 +9,11 @@
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
 	import type { GroupedResults, KnownException, Passage } from '$lib/types';
 	import { enabledSources, allSources } from '$lib/corpus/registry';
+	import { CHIP_SURFACE_RING, resolveSourceAccent } from '$lib/corpus/source-accent';
 	import { online } from '$lib/stores/online';
 	import { showToast } from '$lib/stores/toast';
 	import { canInstall, initInstallPrompt, promptInstall } from '$lib/stores/install';
-	import { getTodaysReflection, reflectionTeaser, formatReflectionDate } from '$lib/corpus/reflection';
+	import { getTodaysReflection, buildReflectionTeaser, formatReflectionDate } from '$lib/corpus/reflection';
 	import { enqueueLog, flushLog } from '$lib/log';
 
 	// ─── State ──────────────────────────────────────────────────────────────────
@@ -248,6 +249,12 @@
 		const d = new Date();
 		return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	})();
+
+	// Bounded concordance-only KWIC window for the date's indexed entry —
+	// never the reflection's full text (protected source).
+	const reflectionTeaserHtml = $derived(
+		todaysReflection ? buildReflectionTeaser(todaysReflection.text) : ''
+	);
 </script>
 
 <svelte:head>
@@ -349,6 +356,7 @@
 				Filter Sources:
 			</span>
 			{#each enabledSources as source (source.id)}
+				{@const accent = resolveSourceAccent(source.color)}
 				<button
 					type="button"
 					onclick={() => toggleSource(source.id)}
@@ -356,12 +364,14 @@
 					class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
 						   border transition-colors duration-150
 						   {activeSourceIds.has(source.id)
-						   	? 'border-transparent text-white'
+						   	? 'border-transparent'
 						   	: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
-					style={activeSourceIds.has(source.id) ? `background-color: ${source.color};` : ''}
+					style={activeSourceIds.has(source.id)
+						? `background-color: ${accent.fill}; color: ${accent.onFill};`
+						: ''}
 				>
 					<span class="inline-block w-2 h-2 rounded-full shrink-0"
-					style="background-color: {activeSourceIds.has(source.id) ? 'white' : source.color};" aria-hidden="true"></span>
+					style="background-color: {accent.fill}; box-shadow: 0 0 0 1.5px {activeSourceIds.has(source.id) ? accent.ring : CHIP_SURFACE_RING};" aria-hidden="true"></span>
 					{source.shortTitle}
 				</button>
 			{/each}
@@ -476,9 +486,8 @@
 					<h3 class="font-serif font-bold text-[#1A1A1A] dark:text-slate-100 text-lg uppercase tracking-wide mb-3">
 						{todaysReflection.title}
 					</h3>
-					<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed flex-1 line-clamp-5 mb-4">
-						"{reflectionTeaser(todaysReflection.text, 250)}"
-					</p>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed flex-1 line-clamp-5 mb-4">{@html reflectionTeaserHtml}</p>
 					<div class="flex items-center justify-between mt-auto pt-3 border-t border-stone-100 dark:border-slate-800">
 						<span class="text-xs text-stone-400 dark:text-slate-500">Ref: {formatReflectionDate(todayMmDd)}</span>
 						<ExternalLink href="https://www.aa.org/daily-reflections"

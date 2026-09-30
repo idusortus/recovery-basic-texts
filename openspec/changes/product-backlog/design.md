@@ -22,8 +22,9 @@ not change app behavior. Current state that shapes the approach:
   1st edition was removed pending re-ingestion. The PRD, ingestion scripts, `README.md`,
   `QUICKSTART.md`, and `docs/plans/basic-texts-implementation-plan.md` previously still
   referenced `big-book-1ed`; those stale 1st-edition references were reconciled to the
-  2nd edition in a later pass, leaving the duplicate-edition question as the remaining
-  open decision item.
+  2nd edition in a later pass. The duplicate-edition question that remained is now
+  resolved: `decisions.md` (2026-09-29, "Big Book: 2nd edition only (drop the 1st
+  edition)") records the 2nd edition as the only Big Book source, closing backlog item 2.5.
 - The archived carpool change at
   `/home/sam/dev/carpool/openspec/changes/archive/2026-09-27-app-feedback-to-github/`
   provides a reusable feedback→GitHub-issue flow, but it is signed-in-only.
@@ -38,7 +39,8 @@ not change app behavior. Current state that shapes the approach:
 - A persistence model: say where the authoritative list lives once the planning artifacts
   are done.
 - Record the anonymous-feedback adaptation as a decision, not an implementation.
-- Record the duplicate-edition question as an open decision per `AGENTS.md`.
+- Record the duplicate-edition question and, once confirmed, its resolution (2nd edition
+  only), per `AGENTS.md`.
 
 **Non-Goals:**
 
@@ -90,8 +92,8 @@ honest and avoids inventing requirements the app does not need yet.
 
 ### One entry per gap, including decision-dependent gaps
 
-The duplicate-edition gap is a single backlog entry whose heading is the open question
-("which edition(s) do we keep?") and whose text carries the decision to confirm plus the
+The duplicate-edition gap is a single backlog entry whose heading is the question
+("which edition(s) do we keep?") and whose text carries the decision (now resolved) plus the
 stale-reference cleanup. This satisfies the spec's "exactly one entry" rule and keeps the
 decision and its follow-through together. Alternative considered: a separate
 "decisions to confirm" list. Rejected because it split one gap across two entries.
@@ -112,13 +114,16 @@ never rendered or copied. Fetching or scraping AAWS content would additionally r
 written AAWS permission per `CORPUS-GUIDE.md`, so the backlog entry does not assume it. The
 existing `/reflection` client-side redirect remains the baseline.
 
-### Duplicate-edition removal is an open decision, not an instruction
+### Duplicate-edition removal: decision resolved, not assumed
 
 `corpus/sources.json` already contains only `big-book-2ed`. The PRD, corpus scripts,
 `README.md`, `QUICKSTART.md`, and the implementation plan previously still referenced a 1st
 edition; those references have since been reconciled to the 2nd edition. Per `AGENTS.md`
 ("ask rather than guessing") the item was recorded as a decision to confirm rather than a
-directive to delete.
+directive to delete. That decision is now confirmed and recorded in `decisions.md`
+(2026-09-29, "Big Book: 2nd edition only (drop the 1st edition)"): the 2nd edition is the
+only Big Book source, so backlog item 2.5 is closed by decision, with no further work
+pending.
 
 ## Risks / Trade-offs
 

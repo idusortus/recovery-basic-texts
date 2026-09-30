@@ -13,7 +13,7 @@ Live at: **basictexts.org**
 - Search-box suggestions (prefix + did-you-mean) and synonym/concept grouping, all offline
 - Installable PWA — works fully offline after first load
 - Shareable search and passage deep-links
-- Today's Daily Reflection teaser on the home dashboard
+- Today's Daily Reflection on the home dashboard: a bounded concordance-only KWIC teaser that links out to aa.org, with a matching offline `/reflection` fallback
 - Light / dark mode, mobile-first layout
 
 ## Stack
@@ -44,6 +44,8 @@ pnpm run dev
 pnpm run test:search       # shared normalization + MiniSearch/concordance two-path parity
 pnpm run test:concordance  # concordance tokenizer offsets
 pnpm run test:feedback     # feedback issue builder
+pnpm run test:source-badge # filter-chip accent contrast (fill / label / badge ring)
+pnpm run test:reflection   # Daily Reflections teaser bound + offline fallback (no aa.org fetch)
 pnpm run test:ingest       # ingest Stage 3 running-header stripping (python3)
 ```
 
@@ -52,6 +54,27 @@ service (`src/lib/search/index.ts`) through a tiny Node loader
 (`scripts/search-test-loader.mjs`) and exercises both search paths. It also runs
 the golden-file suite (`scripts/fixtures/search-golden.json`) over sentence
 boundaries and highlighted spans.
+
+The filter-bar source chips resolve their color through
+`src/lib/corpus/source-accent.ts`: the chip fill and the label foreground are
+contrast-selected from the source accent, and each per-source badge keeps a
+contrast-carrying ring so it stays visible and legible on both selected and
+unselected chips in either theme. `test:source-badge` guards that contract,
+including the gold `Daily Reflections` accent.
+
+### Daily Reflections (link-forward, protected)
+
+Daily Reflections is a protected, concordance-only source. Local display never
+reproduces the day's reflection prose in full: the home card and the offline
+`/reflection` fallback show at most a bounded KWIC window (`contextWords` each
+side of the anchor) built from the date's indexed entry via the shared KWIC
+machinery (`src/lib/corpus/reflection.ts`). While online, `/reflection` stays a
+client-side redirect to `https://www.aa.org/daily-reflections`; while offline it
+renders the indexed entry for the date (or `?date=MM-DD`) instead, and reports
+"No reflection available for [date]" when the local index has no entry. Nothing
+is fetched or scraped from aa.org — it appears only as a navigation link/redirect.
+`test:reflection` guards the window bound, the never-full-text rule, the date
+resolver, and the no-aa.org-fetch contract.
 
 ### Search normalization, ranking, and snippets
 
