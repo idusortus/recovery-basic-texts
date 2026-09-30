@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/stores';
-	import { loadSearchIndex, searchReady, searchError, getPassages } from '$lib/search/index';
+	import { loadSearchIndex, searchReady, searchError, getPassages, derivePassageParams } from '$lib/search/index';
+	import { analyzePassage } from '$lib/search/match';
+	import { buildFullTextHighlight } from '$lib/search/kwic';
 	import { getSourceById } from '$lib/corpus/registry';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
 	import { ArrowLeft, ArrowRight, Copy, Share2 } from '@lucide/svelte';
@@ -12,6 +14,26 @@
 
 	const sourceId = $derived($page.params.sourceId);
 	const passageId = $derived($page.params.passageId);
+
+	// ─── Highlight params (persisted in the URL alone — no storage) ──────────────
+	// `q` is the query and `phrase=1` marks exact-phrase mode, mirroring the home
+	// page's syncUrl. Params are derived through the same query→params step search
+	// uses, so the highlight cannot diverge from the search result.
+	const query = $derived($page.url.searchParams.get('q') ?? '');
+	const phrase = $derived($page.url.searchParams.get('phrase') === '1');
+	const passageParams = $derived(derivePassageParams(query, phrase));
+
+	/**
+	 * Whole-text highlighted HTML for a passage (every occurrence marked, no
+	 * clipping), or null when there is nothing to highlight — an absent/empty
+	 * query, or no query term in this passage. Null falls back to plain text.
+	 */
+	function highlightHtml(text: string): string | null {
+		if (!query) return null;
+		const match = analyzePassage(text, passageParams.phraseTokens, passageParams.keywords);
+		if (match.offsets.length === 0) return null;
+		return buildFullTextHighlight(text, match.offsets);
+	}
 
 	// ─── State ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +63,13 @@
 	});
 
 	async function loadPassage(sid: string, pid: string) {
+		// Read the highlight params synchronously, before any `await`, so the
+		// driving $effect tracks them: a back/forward that changes only the query
+		// (or phrase) for the same passage must re-apply focus/scroll. Reads after
+		// an `await` are not tracked by the effect.
+		const params = passageParams;
+		const hasQuery = params.phraseTokens.length > 0 || params.keywords.length > 0;
+
 		const passages = getPassages();
 		if (!passages) { notFound = true; return; }
 
@@ -84,10 +113,21 @@
 			prevPassage = null;
 			nextPassage = null;
 
-			// Scroll to the target passage after render
+			// Scroll to the target passage after render. With a query, move focus to
+			// the target passage and scroll its first highlight into view immediately
+			// (deliberately no smooth scroll, so it cannot race the programmatic
+			// focus). Without a query — or when the query has no occurrence in the
+			// target passage — keep the previous smooth scroll to the ringed passage.
 			await tick();
 			const el = document.getElementById(`passage-${pid}`);
-			if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			if (!el) return;
+			const mark = hasQuery ? el.querySelector('mark') : null;
+			if (mark) {
+				el.focus({ preventScroll: true });
+				mark.scrollIntoView({ block: 'start' });
+			} else {
+				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
 		} else {
 			// Single-passage view for protected/unknown sources
 			chapterPassages = [];
@@ -204,17 +244,33 @@
 					{#if chapterPassages.length > 0}
 						<!-- Public-domain chapter view: render all paragraphs -->
 						{#each chapterPassages as cp (cp.id)}
+							{@const html = highlightHtml(cp.text)}
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 							<p
 								id="passage-{cp.id}"
+								tabindex={cp.id === passageId ? -1 : undefined}
 								class="text-[#1A1A1A] dark:text-slate-200 leading-relaxed mb-4 last:mb-0
+									   focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-navy
+									   dark:focus:outline-amber-400
 									   {cp.id === passageId ? 'scroll-mt-4 ring-1 ring-stone-300 dark:ring-slate-600 rounded px-2 -mx-2' : ''}"
 							>
-								{cp.text}
+								{#if html}
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html html}
+								{:else}
+									{cp.text}
+								{/if}
 							</p>
 						{/each}
 					{:else}
+						{@const html = highlightHtml(passage.text)}
 						<p class="text-[#1A1A1A] dark:text-slate-200 leading-relaxed">
-							{passage.text}
+							{#if html}
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+								{@html html}
+							{:else}
+								{passage.text}
+							{/if}
 						</p>
 					{/if}
 				</div>

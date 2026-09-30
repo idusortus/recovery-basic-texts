@@ -41,7 +41,7 @@ import { tokenizeWithPositions, buildConcordance } from '../corpus/scripts/conco
 register('./search-test-loader.mjs', import.meta.url);
 
 // Loaded after register() so the loader can resolve extensionless/`$lib` imports.
-const { splitSentences, buildKwicFromOffsets, buildExcerpt } =
+const { splitSentences, buildKwicFromOffsets, buildExcerpt, buildFullTextHighlight } =
 	await import('../src/lib/search/kwic.ts');
 const { analyzePassage, scoreMatch } = await import('../src/lib/search/match.ts');
 const { createSuggestIndex, suggest, boundedEditDistance, applySuggestion, moveActiveIndex } =
@@ -145,6 +145,16 @@ function countsAroundFirstMark(html) {
 		.split(/\s+/)
 		.filter(Boolean).length;
 	return { before, after };
+}
+
+/** Un-escape HTML back to plain text, stripping only the highlight markup. */
+function withoutHighlightMarkup(html) {
+	return decodeHtml(
+		html
+			.replace(/<mark><span class="sr-only">highlighted: <\/span>/g, '')
+			.replace(/<\/mark>/g, '')
+			.replace(/<[^>]*>/g, '')
+	);
 }
 
 /** Parse a query into phrase token runs and keywords, as the app does. */
@@ -881,6 +891,133 @@ await test('p0142 has no leaked page header and the expected page reference', as
 	const prev = parseInt(passages[index - 1].pageRef.replace(/^p\./, ''), 10);
 	const next = parseInt(passages[index + 1].pageRef.replace(/^p\./, ''), 10);
 	assert.ok(page >= prev && page <= next, `page ${page} between ${prev} and ${next}`);
+});
+
+// ─── Passage highlight (persist-passage-highlight) ───────────────────────────
+
+console.log('search: passage highlight (persist-passage-highlight)');
+
+await test('buildFullTextHighlight preserves the plain text and marks every occurrence', () => {
+	const text = 'Home sweet home. There is no place like home.';
+	const match = analyzePassage(text, [], ['home']);
+	assert.equal(match.offsets.length, 3, 'three occurrences found');
+	const html = buildFullTextHighlight(text, match.offsets);
+	assert.ok(!html.includes('\u2026'), 'no clipping ellipsis');
+	assert.equal(withoutHighlightMarkup(html), text, 'complete text preserved (no clipping)');
+	assert.deepEqual(marksOf(html), ['Home', 'home', 'home'], 'every occurrence marked');
+});
+
+await test('buildFullTextHighlight renders a whole real passage without clipping', () => {
+	const passages = concordancePath.getPassages();
+	const text = passages[TARGET_PASSAGE].text;
+	const match = analyzePassage(text, [], ['home']);
+	assert.ok(match.offsets.length > 0, 'keyword "home" occurs in the passage');
+	const whole = buildFullTextHighlight(text, match.offsets);
+	const clipped = buildKwicFromOffsets(text, match.offsets, 'full-text', 0, match.anchor);
+	assert.equal(withoutHighlightMarkup(whole), text, 'whole passage text preserved');
+	assert.equal(marksOf(whole).length, match.offsets.length, 'every offset marked');
+	// The existing `full-text` KWIC primitive still clips (unchanged behavior).
+	assert.ok(clipped.includes('\u2026'), 'buildKwicFromOffsets still clips full-text');
+	assert.ok(clipped.length < whole.length, 'clipped render is shorter than the whole');
+});
+
+await test('derivePassageParams: phrase mode is one adjacent token run, else keywords', () => {
+	assert.deepEqual(concordancePath.derivePassageParams('higher power', true), {
+		phraseTokens: [['higher', 'power']],
+		keywords: []
+	});
+	assert.deepEqual(concordancePath.derivePassageParams('higher power', false), {
+		phraseTokens: [],
+		keywords: ['higher', 'power']
+	});
+	assert.deepEqual(
+		concordancePath.derivePassageParams('god god', false),
+		{ phraseTokens: [], keywords: ['god'] },
+		'keywords are de-duplicated, matching parseQuery'
+	);
+	assert.deepEqual(concordancePath.derivePassageParams('   ', true), {
+		phraseTokens: [],
+		keywords: []
+	});
+	assert.deepEqual(concordancePath.derivePassageParams('', false), {
+		phraseTokens: [],
+		keywords: []
+	});
+});
+
+await test('phrase mode matches token adjacency, not a character substring', () => {
+	const { phraseTokens } = concordancePath.derivePassageParams('god will', true);
+	assert.deepEqual(phraseTokens, [['god', 'will']]);
+	assert.equal(
+		analyzePassage('god will help us', phraseTokens, []).hasAllPhrases,
+		true,
+		'adjacent tokens match'
+	);
+	assert.equal(
+		analyzePassage('god is far; will it', phraseTokens, []).hasAllPhrases,
+		false,
+		'non-adjacent tokens do not match'
+	);
+	// Normalized-token adjacency folds apostrophes: phrase "Gods will" matches "God's will".
+	const apostrophe = concordancePath.derivePassageParams('Gods will', true);
+	assert.equal(
+		analyzePassage("God's will for us.", apostrophe.phraseTokens, []).hasAllPhrases,
+		true,
+		'normalized tokens fold apostrophes'
+	);
+});
+
+await test('buildFullTextHighlight HTML-escapes text inside and outside the mark', () => {
+	const text = 'A <tag> & "quotes" then god and 5 < 6.';
+	const start = text.indexOf('god');
+	const html = buildFullTextHighlight(text, [[start, start + 3]]);
+	assert.ok(html.includes('&lt;tag&gt;'), 'angle brackets escaped');
+	assert.ok(html.includes('&amp;'), 'ampersand escaped');
+	assert.ok(html.includes('&quot;quotes&quot;'), 'double quotes escaped');
+	assert.ok(!html.includes('<tag>'), 'no raw tag reaches the output');
+	assert.equal(withoutHighlightMarkup(html), text, 'round-trips back to the exact text');
+	assert.ok(
+		html.includes('<mark><span class="sr-only">highlighted: </span>god</mark>'),
+		'mark wrapper with sr-only prefix'
+	);
+});
+
+await test('the passage route highlights only inside the full-text branch', async () => {
+	const routePath = path.join(
+		repoRoot,
+		'src',
+		'routes',
+		'passage',
+		'[sourceId]',
+		'[passageId]',
+		'+page.svelte'
+	);
+	const src = await readFile(routePath, 'utf8');
+	assert.ok(src.includes("source.displayMode === 'full-text'"), 'branches on full-text');
+	assert.ok(src.includes('buildFullTextHighlight'), 'uses the whole-text renderer');
+	assert.ok(src.includes('analyzePassage'), 'uses the shared match path');
+	assert.ok(src.includes('derivePassageParams'), 'uses the shared query→params helper');
+	assert.ok(src.includes('Full text not available'), 'protected branch unchanged');
+	assert.ok(src.includes('svelte/no-at-html-tags'), 'at-html lint guard present');
+	assert.ok(!src.includes('buildKwicFromOffsets'), 'does not use the clipping KWIC builder');
+	assert.ok(
+		!src.includes('buildFullKwic') && !src.includes('extractTerms'),
+		'no naive extractor on the passage page'
+	);
+});
+
+await test('buildKwicFromOffsets snippet/concordance-only clipping is unchanged', () => {
+	const text =
+		'Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron.';
+	const start = text.indexOf('theta');
+	const offsets = [[start, start + 5]];
+	const snippet = buildKwicFromOffsets(text, offsets, 'snippet', 5, start);
+	assert.ok(wordsIn(snippet).length <= 5, 'snippet stays within the word cap');
+	const concordance = buildKwicFromOffsets(text, offsets, 'concordance-only', 2, start);
+	const { before, after } = countsAroundFirstMark(concordance);
+	assert.ok(before <= 3, 'concordance-only clips the left side');
+	assert.ok(after <= 3, 'concordance-only clips the right side');
+	assert.ok(concordance.includes('\u2026'), 'concordance-only is clipped');
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

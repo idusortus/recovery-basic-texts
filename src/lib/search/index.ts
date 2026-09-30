@@ -231,6 +231,30 @@ function parseQuery(q: string): ParsedQuery {
 	return { phraseTokens, keywords, synonymKeys, raw: q };
 }
 
+/** Highlight parameters the passage page derives from a URL query. */
+export interface PassageParams {
+	/** One run of adjacent normalized tokens per phrase; empty for keyword mode. */
+	phraseTokens: string[][];
+	/** Normalized keyword terms (AND); empty for phrase mode. */
+	keywords: string[];
+}
+
+/**
+ * Derive the highlight parameters for the passage page from a URL query, using
+ * the same query→params step search uses (so a term highlighted in the search
+ * result is highlighted here by construction).
+ *
+ * In phrase mode the whole trimmed query is one run of adjacent normalized
+ * tokens (`[termsFromText(q)]`); otherwise the keywords are the normalized query
+ * terms. An absent/empty query yields empty arrays, so no highlight is emitted.
+ */
+export function derivePassageParams(q: string, phrase: boolean): PassageParams {
+	const terms = termsFromText(q);
+	if (terms.length === 0) return { phraseTokens: [], keywords: [] };
+	if (phrase) return { phraseTokens: [terms], keywords: [] };
+	return { phraseTokens: [], keywords: [...new Set(terms)] };
+}
+
 /** Unique terms across phrases and keywords — the exact-match candidate set. */
 function allQueryTerms(phrases: string[][], keywords: string[]): string[] {
 	const terms = new Set<string>(keywords);
@@ -246,8 +270,9 @@ interface SearchOptions {
 	/** Filter to these source IDs only. Empty = all enabled sources. */
 	sourceFilter?: string[];
 	/**
-	 * When true, the entire query is matched as an exact adjacent phrase rather than
-	 * AND-matched individual words. Uses a linear in-memory substring scan.
+	 * When true, the entire query is matched as one run of adjacent normalized
+	 * tokens (token adjacency, not a character substring) rather than AND-matched
+	 * individual words. Uses a linear in-memory passage scan.
 	 */
 	phraseMode?: boolean;
 }
@@ -278,7 +303,7 @@ export function search(query: string, options: SearchOptions = {}): GroupedResul
 			: [...enabledSources];
 	const activeSourceIds = new Set(activeSources.map((s) => s.id));
 
-	// ── Phrase mode: exact adjacent substring scan ──────────────────────────────
+	// ── Phrase mode: one adjacent normalized-token run ──────────────────────────
 	if (options.phraseMode && q.length >= 2) {
 		const grouped = _searchByPhrase(
 			q, store!.passages, activeSources, activeSourceIds

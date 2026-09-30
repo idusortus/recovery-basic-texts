@@ -167,6 +167,20 @@
 		goto(url.pathname + url.search, { replaceState: true, keepFocus: true });
 	}
 
+	/**
+	 * Link to a full-text passage, carrying the active query in the URL so the
+	 * passage page can highlight it (mirrors `syncUrl`): `q` when non-empty, plus
+	 * `phrase=1` in exact-phrase mode.
+	 */
+	function passageHref(sourceId: string, passageId: string): string {
+		const q = debouncedQuery.trim();
+		const base = `/passage/${sourceId}/${passageId}`;
+		if (!q) return base;
+		const params = new URLSearchParams({ q });
+		if (phraseMode) params.set('phrase', '1');
+		return `${base}?${params.toString()}`;
+	}
+
 	$effect(() => {
 		if ($searchReady) {
 			if (debouncedQuery) runSearch(debouncedQuery);
@@ -685,7 +699,7 @@
 											aria-label="Copy excerpt to clipboard"
 											onclick={() => copyPassage(result.citation)}>Copy</button>
 										{#if group.source.displayMode === 'full-text'}
-											<a href="/passage/{result.passage.sourceId}/{result.passage.id}"
+											<a href={passageHref(result.passage.sourceId, result.passage.id)}
 												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors">
 												View passage
 											</a>

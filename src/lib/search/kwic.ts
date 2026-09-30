@@ -182,6 +182,28 @@ function highlightByOffsets(text: string, offsets: Array<[number, number]>): str
 	return html;
 }
 
+/**
+ * Render the COMPLETE `text` with EVERY offset wrapped in `<mark>` (HTML-safe),
+ * reusing `highlightByOffsets`' escaping and sr-only "highlighted:" prefix.
+ *
+ * Unlike `buildKwicFromOffsets(text, offsets, 'full-text', …)` — whose
+ * `full-text` window clips to ±2 sentences around the first match — this renders
+ * the whole text with no clipping window and no ellipsis. Use it to highlight a
+ * whole chapter (e.g. the passage page), never for search-result snippets.
+ *
+ * `offsets` are merged match ranges (as returned by `analyzePassage`); they are
+ * sorted and merged defensively so overlapping/adjacent input is still safe.
+ */
+export function buildFullTextHighlight(text: string, offsets: Array<[number, number]>): string {
+	if (offsets.length === 0) return escapeHtml(text);
+	const merged = mergeOffsets(
+		offsets
+			.filter(([start, end]) => start >= 0 && end > start && end <= text.length)
+			.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+	);
+	return highlightByOffsets(text, merged);
+}
+
 /** Merge overlapping or adjacent [start, end) pairs. Input must be sorted by start. */
 function mergeOffsets(sorted: Array<[number, number]>): Array<[number, number]> {
 	const result: Array<[number, number]> = [];
