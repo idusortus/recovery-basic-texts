@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { loadSearchIndex, searchReady, searchError, getPassages, derivePassageParams } from '$lib/search/index';
 	import { analyzePassage } from '$lib/search/match';
@@ -62,13 +63,22 @@
 		if (sourceId && passageId) loadPassage(sourceId, passageId);
 	});
 
+	// SvelteKit resets the scroll position during client-side navigation *after*
+	// rendering but *before* navigation-complete callbacks run
+	// (`client.js:1999-2014` then `:2042`), so a render-time effect alone is too
+	// early: our scroll is overwritten and the page stays at the top. Re-apply
+	// here, after that reset, so search → passage clicks land on the highlight.
+	afterNavigate(async () => {
+		await tick();
+		applyQueryFocusAndScroll();
+	});
+
 	async function loadPassage(sid: string, pid: string) {
 		// Read the highlight params synchronously, before any `await`, so the
 		// driving $effect tracks them: a back/forward that changes only the query
 		// (or phrase) for the same passage must re-apply focus/scroll. Reads after
 		// an `await` are not tracked by the effect.
-		const params = passageParams;
-		const hasQuery = params.phraseTokens.length > 0 || params.keywords.length > 0;
+		void passageParams;
 
 		const passages = getPassages();
 		if (!passages) { notFound = true; return; }
@@ -113,21 +123,11 @@
 			prevPassage = null;
 			nextPassage = null;
 
-			// Scroll to the target passage after render. With a query, move focus to
-			// the target passage and scroll its first highlight into view immediately
-			// (deliberately no smooth scroll, so it cannot race the programmatic
-			// focus). Without a query — or when the query has no occurrence in the
-			// target passage — keep the previous smooth scroll to the ringed passage.
+			// Scroll to the target passage after render. The actual focus/scroll is
+			// shared with the `afterNavigate` hook (see above) so the full-load and
+			// client-navigation entry paths behave identically.
 			await tick();
-			const el = document.getElementById(`passage-${pid}`);
-			if (!el) return;
-			const mark = hasQuery ? el.querySelector('mark') : null;
-			if (mark) {
-				el.focus({ preventScroll: true });
-				mark.scrollIntoView({ block: 'start' });
-			} else {
-				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			}
+			applyQueryFocusAndScroll();
 		} else {
 			// Single-passage view for protected/unknown sources
 			chapterPassages = [];
@@ -145,6 +145,26 @@
 	}
 
 	// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+	/**
+	 * Land the view on the current target passage. With a query whose terms occur
+	 * in that passage, move focus to the passage and scroll its first highlight
+	 * into view immediately (no smooth animation, so it cannot race the focus).
+	 * Without a query — or when the query has no occurrence in the target passage
+	 * — keep the smooth scroll to the ringed passage. Idempotent, and a safe no-op
+	 * before the target has rendered (e.g. while the index is still loading).
+	 */
+	function applyQueryFocusAndScroll() {
+		const el = document.getElementById(`passage-${passageId}`);
+		if (!el) return;
+		const mark = el.querySelector('mark');
+		if (mark) {
+			el.focus({ preventScroll: true });
+			mark.scrollIntoView({ block: 'start' });
+		} else {
+			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	}
 
 	/** Format the citation header: "SOURCE, Xth ED. — CHAPTER NAME" (all uppercase). */
 	function formatCitationHeader(src: Source, p: Passage): string {

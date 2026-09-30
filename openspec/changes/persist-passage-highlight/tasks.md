@@ -68,8 +68,14 @@
       `preventScroll: true`, then `scrollIntoView({ block: 'start' })` on the first `<mark>`
       inside it (falling back to the paragraph when there is no mark). The query path scrolls
       immediately (deliberately no `behavior: 'smooth'`) so the scroll does not race the
-      programmatic focus. **manual (browser)** — verify the first highlighted term is in view
-      and keyboard focus is on the target passage.
+      programmatic focus. This focus/scroll MUST run from the navigation-complete hook
+      (`afterNavigate`, after SvelteKit's own scroll reset on client-side navigation) as well
+      as after the render-time load, so entering from a search result's "View passage" link
+      lands on the highlight exactly like a full page load; extract it into one idempotent
+      helper called from both sites. Do NOT use `data-sveltekit-noscroll` or
+      `disableScrollHandling()`. **manual (browser)** — verify the first highlighted term is in
+      view and keyboard focus is on the target passage when entering BOTH via a search-result
+      "View passage" click (client-side navigation) AND via a full reload of the same URL.
 - [ ] 3.3 Preserve the current fallback: when there is no `q`, or the query has no occurrence
       in the target passage, scroll to and ring the target paragraph without moving focus to a
       highlight, keeping today's `scrollIntoView({ behavior: 'smooth', block: 'start' })`.

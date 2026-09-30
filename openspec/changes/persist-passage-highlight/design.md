@@ -178,6 +178,35 @@ focusable, and focusing them moves the screen-reader cursor into the middle of a
 focus the paragraph without `preventScroll` (the browser then scrolls to the paragraph top,
 losing the "first highlighted term in view" requirement).
 
+### Apply focus/scroll from `afterNavigate`, not only from a render-time effect
+
+On the search → passage click the page landed at the top even though a full reload of the same
+URL worked. The difference is SvelteKit's client-side navigation scroll handling. In
+`node_modules/@sveltejs/kit/src/runtime/client/client.js`, after a client navigation renders it
+resets the scroll position (`client.js:1999-2014`, `scrollTo(0, 0)` when there is no history
+entry or deep link) and only afterwards runs the navigation-complete hooks
+(`client.js:2042`, `after_navigate_callbacks.forEach(...)`). The original code applied
+focus/scroll from `loadPassage` during render (a `$effect` then `await tick()`), i.e. **before**
+that reset — so SvelteKit's `scrollTo(0, 0)` overwrote it and the page stayed at the top. A full
+load has no client navigation and therefore no reset, which is why refresh/share behaved
+correctly.
+
+The fix extracts one idempotent `applyQueryFocusAndScroll()` (reads `#passage-{passageId}`, and
+when a `<mark>` exists inside it focuses the passage with `preventScroll: true` then scrolls the
+mark to `block: 'start'`; otherwise smooth-scrolls to the ringed passage; safe no-op when the
+element is not rendered yet) and calls it from
+`afterNavigate(async () => { await tick(); applyQueryFocusAndScroll(); })`, which runs after the
+reset. It is **also** still called at the end of `loadPassage` because `afterNavigate` fires on
+initial load with type `'enter'` (`client.js:739`) before the async index/passage is necessarily
+rendered, so that path (and refresh) needs the render-time call; applying the same target twice
+is harmless and each call makes a single scroll decision, so there is no smooth/immediate mix
+and no double announcement.
+
+Alternatives rejected: `data-sveltekit-noscroll` on the "View passage" link (fixes only that one
+link and leaves back/forward and chapter navigation inconsistent, since it disables SvelteKit's
+handling per-link); `disableScrollHandling()` (SvelteKit explicitly discourages it and it would
+disable scroll handling for the whole app).
+
 ### Full-text-only guard is enforced at the link and re-asserted at the page
 
 The link only appears for `full-text` sources (already true today), and the passage page
