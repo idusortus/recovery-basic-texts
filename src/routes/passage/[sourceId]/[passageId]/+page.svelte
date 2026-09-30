@@ -160,7 +160,12 @@
 		const mark = el.querySelector('mark');
 		if (mark) {
 			el.focus({ preventScroll: true });
-			mark.scrollIntoView({ block: 'start' });
+			// Center the first highlight in the viewport. A top-aligned scroll
+			// (block: 'start') leaves the mark's upper half under the app's sticky
+			// header (`Nav.svelte` — `sticky top-0 z-40`, ~56px), so only the bottom
+			// half is visible; centering clears the header and lands the user on the
+			// term they searched for.
+			mark.scrollIntoView({ block: 'center' });
 		} else {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}

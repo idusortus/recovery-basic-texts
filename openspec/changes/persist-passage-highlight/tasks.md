@@ -7,12 +7,12 @@
 
 ## 1. Carry the query on the "View passage" link
 
-- [ ] 1.1 In `src/routes/+page.svelte`, build the full-text result's `href` as
+- [x] 1.1 In `src/routes/+page.svelte`, build the full-text result's `href` as
       `/passage/{sourceId}/{passageId}?q=<encoded query>` plus `phrase=1` when `phraseMode`
       is active, mirroring `syncUrl`. **manual (browser)** — verify by running a search,
       activating "View passage", and confirming the destination URL carries `q` (and
       `phrase=1` in exact-phrase mode).
-- [ ] 1.2 Confirm results whose source `displayMode` is not `full-text` are untouched: they
+- [x] 1.2 Confirm results whose source `displayMode` is not `full-text` are untouched: they
       still show "Read at official source" and no "View passage" link. **manual (browser)** —
       verify by inspecting a snippet/concordance-only/protected result after the change.
 
@@ -33,7 +33,7 @@
       and reuse them) — so the passage page does not re-implement search's query→params step.
       Phrase mode is one adjacent normalized-token run (`[termsFromText(q)]`); otherwise
       `keywords = termsFromText(q)`. Add a unit test (see 5.1) pinning both cases.
-- [ ] 2.3 In `src/routes/passage/[sourceId]/[passageId]/+page.svelte`, read `q` (and
+- [x] 2.3 In `src/routes/passage/[sourceId]/[passageId]/+page.svelte`, read `q` (and
       `phrase`) from `$page.url.searchParams` and, inside the existing `full-text` branch,
       highlight each rendered chapter passage from the same match path as search: derive
       `{ phraseTokens, keywords }` via the shared entry point from 2.2, call
@@ -48,45 +48,50 @@
       **manual (browser)** — verify a passage URL with `?q=…` shows `<mark>` around the query
       terms in the rendered chapter text, renders the whole passage (no excerpt), and that the
       output is HTML-escaped.
-- [ ] 2.4 Handle exact-phrase mode: when `phrase=1`, derive `phraseTokens` through the shared
+- [x] 2.4 Handle exact-phrase mode: when `phrase=1`, derive `phraseTokens` through the shared
       entry point (2.2) as the whole trimmed query in one run of adjacent normalized tokens
       (token adjacency, not a character substring) and highlight that run.
       **manual (browser)** — verify a `phrase=1` URL highlights the whole token run and a
       non-phrase URL highlights each term, matching the search page.
-- [ ] 2.5 Confirm no highlight is emitted for an absent/empty `q`, and that sources whose
+- [x] 2.5 Confirm no highlight is emitted for an absent/empty `q`, and that sources whose
       `displayMode` is not `full-text` still render "Full text not available" with no
       highlighted full text. **manual (browser)** — verify by loading each URL variant.
 
 ## 3. Scroll to and focus the highlighted passage
 
-- [ ] 3.1 Make the target passage focusable by adding `tabindex="-1"` to the
+- [x] 3.1 Make the target passage focusable by adding `tabindex="-1"` to the
       `<p id="passage-{cp.id}">` element and add a visible focus style that is a non-color cue
       (outline/ring applied on the element's focused state, not `:focus-visible` only), while
       keeping the existing subtle target-passage ring. **manual (browser)** — verify the
       target paragraph can receive focus and shows the visible indication.
 - [ ] 3.2 On load with a query, after `tick()`, focus the target paragraph with
-      `preventScroll: true`, then `scrollIntoView({ block: 'start' })` on the first `<mark>`
-      inside it (falling back to the paragraph when there is no mark). The query path scrolls
-      immediately (deliberately no `behavior: 'smooth'`) so the scroll does not race the
-      programmatic focus. This focus/scroll MUST run from the navigation-complete hook
+      `preventScroll: true`, then `scrollIntoView({ block: 'center' })` on the first `<mark>`
+      inside it (falling back to the paragraph when there is no mark). The alignment is
+      **centered in the viewport**, not top-aligned: `block: 'start'` parks the highlight under
+      the app's sticky header (`src/lib/components/Nav.svelte:53` — `sticky top-0 z-40`,
+      ~`h-14`/56px), occluding its upper half (the observed "only the bottom half of the
+      highlight is visible" symptom), so centering is required to clear the header. The query
+      path scrolls immediately (deliberately no `behavior: 'smooth'`) so the scroll does not
+      race the programmatic focus. This focus/scroll MUST run from the navigation-complete hook
       (`afterNavigate`, after SvelteKit's own scroll reset on client-side navigation) as well
       as after the render-time load, so entering from a search result's "View passage" link
       lands on the highlight exactly like a full page load; extract it into one idempotent
       helper called from both sites. Do NOT use `data-sveltekit-noscroll` or
-      `disableScrollHandling()`. **manual (browser)** — verify the first highlighted term is in
-      view and keyboard focus is on the target passage when entering BOTH via a search-result
-      "View passage" click (client-side navigation) AND via a full reload of the same URL.
-- [ ] 3.3 Preserve the current fallback: when there is no `q`, or the query has no occurrence
+      `disableScrollHandling()`. **manual (browser)** — verify the first highlighted term is
+      centered in the viewport, clear of the sticky header, and keyboard focus is on the target
+      passage when entering BOTH via a search-result "View passage" click (client-side
+      navigation) AND via a full reload of the same URL.
+- [x] 3.3 Preserve the current fallback: when there is no `q`, or the query has no occurrence
       in the target passage, scroll to and ring the target paragraph without moving focus to a
       highlight, keeping today's `scrollIntoView({ behavior: 'smooth', block: 'start' })`.
       **manual (browser)** — verify both cases against today's behavior.
 
 ## 4. URL reproducibility and guardrails
 
-- [ ] 4.1 Verify the highlight and focus state reproduce from the URL alone on reload,
+- [x] 4.1 Verify the highlight and focus state reproduce from the URL alone on reload,
       back/forward navigation, and a URL opened in a fresh session; confirm no local storage,
       cookies, accounts, bookmarks, or notes are used. **manual (browser)**
-- [ ] 4.2 Verify the guardrails in `AGENTS.md` hold: only public-domain `full-text` sources
+- [x] 4.2 Verify the guardrails in `AGENTS.md` hold: only public-domain `full-text` sources
       can render or highlight full text, sources whose `displayMode` is not `full-text` are
       unchanged, and no non-AA content or persistence surface is introduced. **manual (browser)**
 

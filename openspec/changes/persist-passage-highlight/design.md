@@ -164,10 +164,17 @@ the focus target still keeps the view anchored on the clicked passage.
 
 The target passage `<p id="passage-…">` gets `tabindex="-1"` so it can receive programmatic
 focus. On load with a query, the page calls `.focus({ preventScroll: true })` on the target
-paragraph (to avoid the browser's own coarse scroll), then `scrollIntoView({ block: 'start'
+paragraph (to avoid the browser's own coarse scroll), then `scrollIntoView({ block: 'center'
 })` on the first `<mark>` inside it, falling back to the paragraph when there is no mark.
-The query path deliberately scrolls **immediately** (no `behavior: 'smooth'`) so the user
-lands on the first highlighted term without a smooth animation racing the programmatic
+The alignment is **centered rather than top-aligned** (`block: 'start'`) because a top-aligned
+scroll parks the highlight at the viewport top, where the app's sticky header
+(`src/lib/components/Nav.svelte:53` — `sticky top-0 z-40`, ~`h-14`/56px) occludes its upper
+half. That is exactly the observed symptom: `block: 'start'` left only the bottom half of the
+yellow `<mark>` visible and forced the user to scroll up to see the term. Centering clears the
+sticky header (and any future header height changes, up to half the viewport) on both the
+full-load and client-side-navigation paths, so the searched-for term lands in the middle of the
+view. The query path still deliberately scrolls **immediately** (no `behavior: 'smooth'`) so
+the user lands on the first highlighted term without a smooth animation racing the programmatic
 focus. The no-query fallback keeps today's behavior, including its existing
 `scrollIntoView({ behavior: 'smooth', block: 'start' })`, so the current page feel is
 unchanged. A visible focus style is applied when the paragraph is focused (an outline/ring
@@ -193,8 +200,9 @@ correctly.
 
 The fix extracts one idempotent `applyQueryFocusAndScroll()` (reads `#passage-{passageId}`, and
 when a `<mark>` exists inside it focuses the passage with `preventScroll: true` then scrolls the
-mark to `block: 'start'`; otherwise smooth-scrolls to the ringed passage; safe no-op when the
-element is not rendered yet) and calls it from
+mark to `block: 'center'` — centered so the sticky header cannot occlude it; otherwise
+smooth-scrolls to the ringed passage; safe no-op when the element is not rendered yet) and
+calls it from
 `afterNavigate(async () => { await tick(); applyQueryFocusAndScroll(); })`, which runs after the
 reset. It is **also** still called at the end of `loadPassage` because `afterNavigate` fires on
 initial load with type `'enter'` (`client.js:739`) before the async index/passage is necessarily

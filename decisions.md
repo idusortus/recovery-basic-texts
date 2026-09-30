@@ -12,6 +12,13 @@
 
 ---
 
+## 2026-09-30 — Highlight scrolls center, not top, because the app header is sticky
+
+**Context:** After `persist-passage-highlight` shipped, "View passage" scrolled the first `<mark>` with `block: 'start'`, which aligns the term's top to the viewport top — where the app's sticky header (`Nav.svelte:53`, `sticky top-0 z-40`, ~56px) covers it, so only the bottom half of the highlight was visible and the user had to scroll up. `block: 'start'` is generally correct in a page WITHOUT a sticky header, which is why the flaw wasn't obvious in review.
+**Choice:** Scroll the first highlighted occurrence with `block: 'center'` (instant, after `focus({preventScroll:true})`) so it lands mid-viewport, clear of the sticky nav; the no-query fallback keeps its existing smooth `block: 'start'` scroll to the ringed passage. Centering also degrades safely: when the scroll clamps (short document / mark near the end), clamping places the mark *below* center, so it can never be occluded.
+**Trade-offs:** Centering is not pixel-exact when there is insufficient content above the mark (it clamps to 0), but the page's back-link + citation header occupy that space so the term still clears the header. The fallback path still uses `block: 'start'` and can sit ~40px under the nav (pre-existing, not addressed here).
+**Revisit:** If the header stops being sticky, `block: 'start'` (or a `scroll-margin-top` matching the header height) may be preferable; if the no-query fallback is reported as occluded, apply the same header offset or center it too.
+
 ## 2026-09-30 — Client-side navigation resets scroll after render: position from `afterNavigate`, not a render-time effect
 
 **Context:** `persist-passage-highlight` shipped focus/scroll inside a `$effect`-driven load path. Manual verification found a real bug: search → "View passage" landed at the TOP of the passage page, while refreshing the same URL worked. Cause (verified in SvelteKit 2.68.0 `src/runtime/client/client.js`): on client-side navigation SvelteKit renders, then resets scroll (`scrollTo(0, 0)`, `:1999-2014` — "we reset scroll before dealing with focus"), and only afterwards runs `afterNavigate` callbacks (`:2042`). A render-time effect scrolls before that reset and is overwritten; a full load/refresh performs no navigation, so nothing resets it. `afterNavigate` also fires on the initial entry (`:735-739`, `type: 'enter'`, gated on hydration), so it is the hook that covers both paths.

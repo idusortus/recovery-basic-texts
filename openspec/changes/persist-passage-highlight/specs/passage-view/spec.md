@@ -89,8 +89,10 @@ When the passage page is entered — whether by a full page load (including relo
 shared URL opened directly) or by client-side navigation from a search result's "View
 passage" affordance — with a non-empty `q` and the target passage's rendered text contains at
 least one highlighted term, after the chapter has rendered the page SHALL scroll the first
-highlighted term within the target passage into view and SHALL move keyboard focus to the
-target passage, so keyboard and screen-reader users land on the highlighted text. The focused
+highlighted term within the target passage so that it is **centered in the viewport** (clear
+of the app's sticky header, which would otherwise occlude the top of the highlight) and SHALL
+move keyboard focus to the target passage, so keyboard and screen-reader users land on the
+highlighted text. The centered position SHALL hold on both entry paths. The focused
 target passage SHALL show a visible focus indication that is not conveyed by color alone.
 When the query yields no highlighted term in the target passage, or when `q` is absent or
 empty, the page SHALL retain its prior behavior — scrolling to and ringing the target passage
@@ -98,15 +100,18 @@ empty, the page SHALL retain its prior behavior — scrolling to and ringing the
 navigation's own scroll handling so that a client-side entry is positioned the same as a full
 page load, and SHALL be a safe no-op before the target has rendered.
 
-#### Scenario: Full page load lands on the highlighted passage
+#### Scenario: Full page load centers the highlighted passage
 
 - **WHEN** a passage URL carrying a query is loaded as a full page load
-- **THEN** the first highlighted term within the target passage is scrolled into view and keyboard focus is on the target passage
+- **THEN** the first highlighted term within the target passage is centered in the viewport
+  (not occluded by the sticky header) and keyboard focus is on the target passage
 
-#### Scenario: Client-side navigation from a search result lands on the highlighted passage
+#### Scenario: Client-side navigation from a search result centers the highlighted passage
 
 - **WHEN** the user activates "View passage" from a search result, entering the passage page by client-side navigation rather than a full page load
-- **THEN** the page is not left scrolled to the top: the first highlighted term within the target passage is scrolled into view and keyboard focus is on the target passage
+- **THEN** the page is not left scrolled to the top and the first highlighted term within the
+  target passage is centered in the viewport (clear of the sticky header), with keyboard focus
+  on the target passage
 
 #### Scenario: The focused passage shows a visible focus indication
 
