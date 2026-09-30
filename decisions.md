@@ -12,6 +12,20 @@
 
 ---
 
+## 2026-09-30 — Public `/stats` removed rather than gated; install-prompt lifecycle lives in `app-shell`
+
+**Context:** The `ux-qol-improvements` batch had to mitigate a real exposure: `src/routes/stats/+page.svelte` + `functions/api/stats.ts` served every logged search query to anyone, unauthenticated. It also had to home a duplicate-`initInstallPrompt()` fix, but `pwa-icon`'s Purpose is strictly icon artwork, so that requirement did not belong there.
+**Choice:** Delete the public `/stats` page and the `/api/stats` endpoint; keep anonymous logging unchanged and move maintainer reads out-of-band (`wrangler kv` CLI). Gating behind a shared secret was rejected because it is an auth-like surface the no-accounts guardrail avoids. The install-prompt requirement was placed in the NEW `app-shell` capability (app-wide shell guarantees) instead of `pwa-icon` or a one-requirement `pwa-install` capability.
+**Trade-offs:** Maintaining a query-usage dashboard now requires CLI access rather than a URL, and `POST /api/log` remains an unauthenticated write vector (recorded as a risk, unchanged, out of scope). `app-shell` accumulates unrelated shell concerns (error page, overlay a11y, toast live region, install prompt), which is acceptable while it stays small.
+**Revisit:** If non-technical maintainers need query analytics, reinstate a page behind a real access-control mechanism (Cloudflare Access), not a shared secret; if `app-shell` grows past ~6 requirements, split `pwa-install` out.
+
+## 2026-09-30 — Broadening passage links to every result was a `REMOVED`+`ADDED` spec delta, not `MODIFIED`
+
+**Context:** Item 3 of `ux-qol-improvements` lets protected/snippet results expose their passage URL (the passage page already shows "Full text not available" + official link for non-`full-text` sources). The standing `passage-view` main spec carried a requirement with a scenario literally named "Non-full-text results do not gain a passage link" — the exact behavior being reversed.
+**Choice:** Represent the change as `## REMOVED` (with Reason + Migration) of the old requirement plus `## ADDED` of "Every result links to its passage page with the query carried" (preserving the original full-text scenarios). OpenSpec's validator rejects a `MODIFIED` block that drops or renames any scenario the main spec still has, and keeping the now-false scenario name would leave a contradictory contract.
+**Trade-offs:** The spec now records a removed requirement rather than an evolved one, so the history of that clause lives in the delta rather than a single modified block. Verified by validate (`--strict` green) that no scenario was unintentionally lost.
+**Revisit:** Never for this clause; if OpenSpec gains a `RENAMED`/scenario-scoped modification primitive, the preference would shift back to `MODIFIED`.
+
 ## 2026-09-30 — Highlight scrolls center, not top, because the app header is sticky
 
 **Context:** After `persist-passage-highlight` shipped, "View passage" scrolled the first `<mark>` with `block: 'start'`, which aligns the term's top to the viewport top — where the app's sticky header (`Nav.svelte:53`, `sticky top-0 z-40`, ~56px) covers it, so only the bottom half of the highlight was visible and the user had to scroll up. `block: 'start'` is generally correct in a page WITHOUT a sticky header, which is why the flaw wasn't obvious in review.
