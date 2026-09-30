@@ -1,20 +1,26 @@
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { Tag, Info, ChevronRight } from '@lucide/svelte';
-	import { loadSearchIndex, search, searchReady, searchError, concordanceReady, getSuggestionTerms } from '$lib/search/index';
+	import { loadSearchIndex, search, searchReady, searchError, searchProgress, retryLoad, concordanceReady, getSuggestionTerms } from '$lib/search/index';
 	import { applySuggestion, moveActiveIndex, type Suggestion } from '$lib/search/suggestions';
+	import { pickZeroResultSuggestions } from '$lib/search/zero-result';
+	import { serializeSearchUrl, parseSearchUrl } from '$lib/search/url-state';
 	import { findExceptions } from '$lib/corpus/exceptions';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
+	import DisplayModeLegend from '$lib/components/DisplayModeLegend.svelte';
 	import type { GroupedResults, KnownException, Passage } from '$lib/types';
 	import { enabledSources, allSources } from '$lib/corpus/registry';
 	import { CHIP_SURFACE_RING, resolveSourceAccent } from '$lib/corpus/source-accent';
+	import { resolveSourceLink } from '$lib/corpus/source-link';
 	import { online } from '$lib/stores/online';
 	import { showToast } from '$lib/stores/toast';
-	import { canInstall, initInstallPrompt, promptInstall } from '$lib/stores/install';
+	import { canInstall, promptInstall } from '$lib/stores/install';
 	import { getTodaysReflection, buildReflectionTeaser, formatReflectionDate } from '$lib/corpus/reflection';
 	import { enqueueLog, flushLog } from '$lib/log';
+	import { SHORTCUTS } from '$lib/shortcuts';
+	import { reportHref } from '$lib/report-link';
 
 	// ─── State ──────────────────────────────────────────────────────────────────
 
@@ -33,6 +39,12 @@
 	let suggestions = $state<Suggestion[]>([]);
 	let suggestionsOpen = $state(false);
 	let activeSuggestion = $state(-1);
+
+	// In-place Copy/Share confirmation (Design D1): the { key, label } of the
+	// control that just confirmed, cleared after a short delay so the label
+	// reverts. Independent of the toast, which remains a secondary cue.
+	let confirmed = $state<{ key: string; label: string } | null>(null);
+	let confirmTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const TOPIC_CHIPS = [
 		'Acceptance', 'Resentment', 'Fear', 'Gratitude',
@@ -56,16 +68,16 @@
 	// ─── Load index on mount; restore query from URL ──────────────────────────
 
 	onMount(async () => {
-		initInstallPrompt();
-		const urlQuery = $page.url.searchParams.get('q') ?? '';
-		phraseMode = $page.url.searchParams.get('phrase') === '1';
-		query = urlQuery;
-		debouncedQuery = urlQuery;
+		const urlState = parseSearchUrl($page.url.search, enabledSources.map((s) => s.id));
+		phraseMode = urlState.phrase;
+		if (urlState.sources) activeSourceIds = new Set(urlState.sources);
+		query = urlState.q;
+		debouncedQuery = urlState.q;
 		await loadSearchIndex();
 		todaysReflection = getTodaysReflection();
-		if (urlQuery) {
-			runSearch(urlQuery);
-			hints = findExceptions(urlQuery);
+		if (urlState.q) {
+			runSearch(urlState.q);
+			hints = findExceptions(urlState.q);
 		}
 		if ($online) flushLog();
 	});
@@ -141,30 +153,38 @@
 			runSearch(query);
 			hints = findExceptions(query);
 			syncUrl(query);
-			// Log on Enter (explicit submit only — PRD §7.4)
-			if (query.trim()) {
-				const sf = activeSourceIds.size < enabledSources.length ? [...activeSourceIds] : null;
-				enqueueLog(query.trim(), results.reduce((n, g) => n + g.results.length, 0), sf);
-				if ($online) flushLog();
-			}
+			// Log on explicit submit only — PRD §7.4
+			submitLog(query);
 		}
+	}
+
+	/** The active source ids in registry order, or null when all are selected. */
+	function activeSourceList(): string[] | null {
+		if (activeSourceIds.size >= enabledSources.length) return null;
+		return enabledSources.filter((s) => activeSourceIds.has(s.id)).map((s) => s.id);
+	}
+
+	/** Enqueue the anonymous log record for an explicit submit (Enter / toggle). */
+	function submitLog(q: string) {
+		if (!q.trim()) return;
+		enqueueLog(q.trim(), results.reduce((n, g) => n + g.results.length, 0), activeSourceList());
+		if ($online) flushLog();
 	}
 
 	function runSearch(q: string) {
 		if (!$searchReady) return;
 		results = search(q, {
-			sourceFilter: activeSourceIds.size < enabledSources.length
-				? [...activeSourceIds]
-				: undefined,
+			sourceFilter: activeSourceList() ?? undefined,
 			phraseMode
 		});
 	}
 
 	function syncUrl(q: string) {
-		const url = new URL(window.location.href);
-		if (q) { url.searchParams.set('q', q); } else { url.searchParams.delete('q'); }
-		if (phraseMode) { url.searchParams.set('phrase', '1'); } else { url.searchParams.delete('phrase'); }
-		goto(url.pathname + url.search, { replaceState: true, keepFocus: true });
+		const search = serializeSearchUrl({ q, phrase: phraseMode, sources: activeSourceList() });
+		goto(`${window.location.pathname}${search ? `?${search}` : ''}`, {
+			replaceState: true,
+			keepFocus: true
+		});
 	}
 
 	/**
@@ -222,12 +242,29 @@
 		}
 		activeSourceIds = next;
 		runSearch(debouncedQuery);
+		syncUrl(debouncedQuery);
+		submitLog(debouncedQuery);
 	}
 
-	async function copyPassage(citation: string) {
+	/** True when this chip is the only selected source (cannot be deselected). */
+	function isLastActiveSource(sourceId: string): boolean {
+		return activeSourceIds.has(sourceId) && activeSourceIds.size === 1;
+	}
+
+	/** Flash an in-place confirmation on one control, then revert. */
+	function confirmInPlace(key: string, label: string) {
+		confirmed = { key, label };
+		if (confirmTimer) clearTimeout(confirmTimer);
+		confirmTimer = setTimeout(() => {
+			confirmed = null;
+		}, 2500);
+	}
+
+	async function copyPassage(citation: string, key: string) {
 		try {
 			await navigator.clipboard.writeText(citation);
 			showToast('Passage copied to clipboard.', 'info', 2500);
+			confirmInPlace(`copy:${key}`, 'Copied ✓');
 		} catch {
 			showToast('Could not copy — please select and copy manually.', 'warning');
 		}
@@ -238,24 +275,24 @@
 		try {
 			if (navigator.share) {
 				await navigator.share({ url, title: 'basictexts.org' });
+				confirmInPlace(`share:${passageId}`, 'Shared ✓');
 			} else {
 				await navigator.clipboard.writeText(url);
 				showToast('Link copied to clipboard.', 'info', 2500);
+				confirmInPlace(`share:${passageId}`, 'Link copied');
 			}
-		} catch { /* User cancelled */ }
+		} catch (err) {
+			// AbortError is the user dismissing the native share sheet; anything
+			// else is a real failure and must be surfaced, never shown as success.
+			if (err instanceof Error && err.name === 'AbortError') return;
+			showToast('Could not share — please copy the address manually.', 'warning');
+		}
 	}
 
-	async function shareSearch(q: string) {
-		const url = `https://basictexts.org/?q=${encodeURIComponent(q)}`;
-		try {
-			if (navigator.share) {
-				await navigator.share({ url, title: 'basictexts.org — ' + q });
-			} else {
-				await navigator.clipboard.writeText(url);
-				showToast('Search link copied to clipboard.', 'info', 2500);
-			}
-		} catch { /* User cancelled */ }
-	}
+	onDestroy(() => {
+		if (confirmTimer) clearTimeout(confirmTimer);
+		if (debounceTimer) clearTimeout(debounceTimer);
+	});
 
 	const totalCount = $derived(results.reduce((acc, g) => acc + g.results.length, 0));
 
@@ -264,10 +301,29 @@
 		return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	})();
 
+	/** Accessible name for a result card, announcing position and source. */
+	function resultAriaLabel(
+		source: { shortTitle: string },
+		passage: { chapterRef: string | null; title: string },
+		index: number,
+		total: number
+	): string {
+		const chapter = passage.chapterRef ?? passage.title;
+		return `Result ${index + 1} of ${total}: ${source.shortTitle} — ${chapter}`;
+	}
+
 	// Bounded concordance-only KWIC window for the date's indexed entry —
 	// never the reflection's full text (protected source).
 	const reflectionTeaserHtml = $derived(
 		todaysReflection ? buildReflectionTeaser(todaysReflection.text) : ''
+	);
+
+	// Zero-result recovery (Design D5): topic suggestions + at most one
+	// did-you-mean from the loaded index; empty unless there are zero results.
+	const zeroResultRecovery = $derived(
+		results.length === 0 && debouncedQuery
+			? pickZeroResultSuggestions(TOPIC_CHIPS, debouncedQuery, getSuggestionTerms(debouncedQuery, 8))
+			: { topics: [] as string[], didYouMean: null as string | null }
 	);
 </script>
 
@@ -363,6 +419,46 @@
 		{/if}
 	</div>
 
+	<!-- ── SHORTCUT HINT (rendered from the wired registry) ─────────────────── -->
+	<p class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-400 dark:text-slate-500 mb-4">
+		{#each SHORTCUTS as shortcut (shortcut.keys)}
+			<span class="inline-flex items-center gap-1">
+				<kbd class="px-1.5 py-0.5 rounded border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[10px]">{shortcut.keys}</kbd>
+				{shortcut.description}
+			</span>
+		{/each}
+	</p>
+
+	<!-- ── INDEX LOAD STATE (first-load + search) ───────────────────────────── -->
+	{#if !$searchReady && !$searchError}
+		<p class="text-stone-400 dark:text-slate-500 text-sm mb-4" role="status">
+			{#if $searchProgress === 'fetching'}
+				Loading library…
+			{:else if $searchProgress === 'preparing'}
+				Preparing search…
+			{:else}
+				Loading search index…
+			{/if}
+		</p>
+	{/if}
+
+	{#if $searchError}
+		<div
+			class="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3 mb-4"
+			role="alert"
+		>
+			<p class="text-red-600 dark:text-red-400 text-sm mb-1">Failed to load the search index.</p>
+			<p class="text-stone-500 dark:text-slate-400 text-xs mb-3">{$searchError}</p>
+			<button
+				type="button"
+				onclick={() => retryLoad()}
+				class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-navy text-white text-xs font-medium hover:bg-navy/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400"
+			>
+				Retry
+			</button>
+		</div>
+	{/if}
+
 	<!-- ── FILTER SOURCES (always) ──────────────────────────────────────────── -->
 	{#if enabledSources.length > 0}
 		<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filter by source">
@@ -375,11 +471,15 @@
 					type="button"
 					onclick={() => toggleSource(source.id)}
 					aria-pressed={activeSourceIds.has(source.id)}
+					aria-disabled={isLastActiveSource(source.id)}
+					aria-describedby={isLastActiveSource(source.id) ? 'filter-last-source-note' : undefined}
 					class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
 						   border transition-colors duration-150
-						   {activeSourceIds.has(source.id)
-						   	? 'border-transparent'
-						   	: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
+						   {isLastActiveSource(source.id)
+						   	? 'border-dashed border-stone-300 dark:border-slate-600 cursor-not-allowed'
+						   	: activeSourceIds.has(source.id)
+						   		? 'border-transparent'
+						   		: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
 					style={activeSourceIds.has(source.id)
 						? `background-color: ${accent.fill}; color: ${accent.onFill};`
 						: ''}
@@ -389,6 +489,9 @@
 					{source.shortTitle}
 				</button>
 			{/each}
+			<p id="filter-last-source-note" class="sr-only">
+				The last selected source cannot be deselected. Select another source first.
+			</p>
 			<!-- Exact phrase mode toggle -->
 			<button
 				type="button"
@@ -400,6 +503,7 @@
 					runSearch(query);
 					hints = findExceptions(query);
 					syncUrl(query);
+					submitLog(query);
 					dismissSuggestions();
 				}}
 				aria-pressed={phraseMode}
@@ -410,11 +514,20 @@
 						   ? 'border-transparent bg-navy text-white dark:bg-amber-400 dark:text-slate-900'
 						   : 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
 			>
-				<span aria-hidden="true" class="font-mono text-xs">{phraseMode ? '"…"' : '""'}</span>
 				Exact phrase
+				<span
+					aria-hidden="true"
+					class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide
+						   {phraseMode
+						   	? 'bg-white/25 text-white dark:bg-slate-900/25 dark:text-slate-900'
+						   	: 'bg-stone-100 text-stone-600 dark:bg-slate-800 dark:text-slate-400'}"
+				>{phraseMode ? 'On' : 'Off'}</span>
 			</button>
 		</div>
 	{/if}
+
+	<!-- ── DISPLAY-MODE LEGEND (search surface) ─────────────────────────────── -->
+	<DisplayModeLegend />
 
 	<!-- ── HOME STATE ───────────────────────────────────────────────────────── -->
 	{#if !debouncedQuery}
@@ -504,10 +617,10 @@
 					<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed flex-1 line-clamp-5 mb-4">{@html reflectionTeaserHtml}</p>
 					<div class="flex items-center justify-between mt-auto pt-3 border-t border-stone-100 dark:border-slate-800">
 						<span class="text-xs text-stone-400 dark:text-slate-500">Ref: {formatReflectionDate(todayMmDd)}</span>
-						<ExternalLink href="https://www.aa.org/daily-reflections"
+						<a href="/reflection"
 							class="text-xs font-medium text-navy dark:text-amber-400 hover:underline transition-colors">
-							Read full reflection at aa.org →
-						</ExternalLink>
+							Read full reflection →
+						</a>
 					</div>
 
 				{:else}
@@ -523,11 +636,11 @@
 						<p class="text-stone-400 dark:text-slate-500 text-sm italic leading-relaxed mb-5">
 							Daily Reflections are available at aa.org. We link directly to the official source.
 						</p>
-						<ExternalLink href="https://www.aa.org/daily-reflections"
+						<a href="/reflection"
 							class="self-start inline-flex items-center gap-2 px-4 py-2 rounded bg-navy text-white
 								   text-sm font-medium hover:bg-navy/90 transition-colors">
-							Read today's reflection at aa.org →
-						</ExternalLink>
+							Read today's reflection →
+						</a>
 					</div>
 					<div class="pt-3 border-t border-stone-100 dark:border-slate-800">
 						<p class="text-xs text-stone-300 dark:text-slate-600 italic">
@@ -593,17 +706,6 @@
 	<!-- ── SEARCH STATE ──────────────────────────────────────────────────────── -->
 	{:else}
 
-		{#if !$searchReady && !$searchError}
-			<p class="text-stone-400 dark:text-slate-500 text-sm text-center py-8">Loading search index…</p>
-		{/if}
-
-		{#if $searchError}
-			<div class="text-center py-12">
-				<p class="text-red-600 dark:text-red-400 text-sm mb-2">Failed to load search index.</p>
-				<p class="text-stone-400 dark:text-slate-500 text-xs">{$searchError}</p>
-			</div>
-		{/if}
-
 		{#if hints.length > 0}
 			<div class="mb-6 space-y-3">
 				{#each hints as hint (hint.title)}
@@ -623,7 +725,7 @@
 		{/if}
 
 		{#if $searchReady}
-			{#if results.length === 0 && hints.length === 0 && debouncedQuery}
+			{#if results.length === 0 && debouncedQuery}
 				<div class="text-center py-12 animate-fade-in">
 					<p class="text-stone-500 dark:text-slate-400 mb-2">
 						No results for <strong>"{debouncedQuery}"</strong>
@@ -635,6 +737,38 @@
 							Try different keywords, or check spelling. Quoted phrases require an exact match.
 						{/if}
 					</p>
+					{#if zeroResultRecovery.didYouMean}
+						{@const didYouMean = zeroResultRecovery.didYouMean}
+						<p class="mt-4 text-sm text-stone-500 dark:text-slate-400">
+							Did you mean
+							<button
+								type="button"
+								onclick={() => searchTopic(didYouMean)}
+								class="font-medium text-navy dark:text-amber-400 hover:underline"
+							>{didYouMean}</button>?
+						</p>
+					{/if}
+					{#if zeroResultRecovery.topics.length > 0}
+						<div class="mt-6">
+							<p class="text-xs uppercase tracking-wide text-stone-400 dark:text-slate-500 font-medium mb-2">
+								Try these searches:
+							</p>
+							<div class="flex flex-wrap justify-center gap-2" role="group" aria-label="Suggested searches">
+								{#each zeroResultRecovery.topics as topic (topic)}
+									<button
+										type="button"
+										onclick={() => searchTopic(topic)}
+										class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
+											   bg-white dark:bg-slate-900 text-stone-600 dark:text-slate-400
+											   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+											   transition-colors duration-150"
+									>
+										{topic}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				</div>
 			{:else if results.length > 0}
 				<p class="text-stone-400 dark:text-slate-500 text-sm mb-6" aria-live="polite" aria-atomic="true">
@@ -643,7 +777,7 @@
 					{#if phraseMode}
 						<span class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
 							bg-navy/10 text-navy dark:bg-amber-400/20 dark:text-amber-300 border border-navy/20 dark:border-amber-400/30">
-							<span aria-hidden="true" class="font-mono">""</span> exact phrase
+							exact phrase
 						</span>
 					{/if}
 				</p>
@@ -659,9 +793,13 @@
 							</span>
 						</div>
 						<div class="space-y-3">
-							{#each group.results as result (result.passage.id)}
-								<article class="bg-white dark:bg-slate-900/40 rounded shadow-sm border border-stone-200
-									   dark:border-slate-800 px-5 py-4 transition-colors duration-200">								{#if result.pinned}
+							{#each group.results as result, i (result.passage.id)}
+								<article
+									aria-label={resultAriaLabel(group.source, result.passage, i, group.results.length)}
+									class="bg-white dark:bg-slate-900/40 rounded shadow-sm border border-stone-200
+									   dark:border-slate-800 px-5 py-4 transition-colors duration-200"
+								>
+									{#if result.pinned}
 									<p class="text-xs font-bold uppercase tracking-widest mb-2"
 										style="color: {group.source.color};">
 										Quick Reference
@@ -676,7 +814,7 @@
 										<span aria-hidden="true">~</span> Similar result — matched via a related term
 									</p>
 								{/if}
-								<p class="font-serif text-xs font-bold text-stone-600 dark:text-slate-300 mb-2 uppercase tracking-wide">
+								<h3 class="font-serif text-xs font-bold text-stone-600 dark:text-slate-300 mb-2 uppercase tracking-wide">
 										{#if group.source.edition?.edition}
 											{group.source.shortTitle}, {group.source.edition.edition.toUpperCase()} ED.
 											{#if result.passage.chapterRef}
@@ -690,37 +828,42 @@
 												— {result.passage.title.toUpperCase()}
 											{/if}
 										{/if}
-									</p>
+									</h3>
 									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									<p class="text-[#1A1A1A] dark:text-slate-200 leading-relaxed text-sm">{@html result.kwic}</p>
 									<div class="mt-3 flex flex-wrap items-center gap-4">
 										<button type="button"
 											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"
-											aria-label="Copy excerpt to clipboard"
-											onclick={() => copyPassage(result.citation)}>Copy</button>
-										{#if group.source.displayMode === 'full-text'}
-											<a href={passageHref(result.passage.sourceId, result.passage.id)}
-												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors">
-												View passage
-											</a>
+											aria-label={confirmed?.key === `copy:${result.passage.id}` ? confirmed.label : 'Copy excerpt to clipboard'}
+											onclick={() => copyPassage(result.citation, result.passage.id)}>
+											{confirmed?.key === `copy:${result.passage.id}` ? confirmed.label : 'Copy'}
+										</button>
+										<a href={passageHref(result.passage.sourceId, result.passage.id)}
+											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors">
+											View passage
+										</a>
+										{#if group.source.displayMode !== 'full-text'}
+											{@const officialHref = resolveSourceLink(group.source, result.passage, debouncedQuery)}
+											{#if officialHref}
+												<ExternalLink href={officialHref}
+													class="text-xs font-medium text-navy dark:text-amber-400 hover:underline transition-colors">
+													Read at official source →
+												</ExternalLink>
+											{/if}
 										{/if}
-										{#if group.source.displayMode !== 'full-text' && group.source.officialUrl}
-											<ExternalLink href={group.source.officialUrl}
-												class="text-xs font-medium text-navy dark:text-amber-400 hover:underline transition-colors">
-												Read at official source →
-											</ExternalLink>
-										{/if}
-									{#if group.source.displayMode === 'full-text'}
-											<button type="button"
-												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
-												aria-label="Share passage link"
-												onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>Share</button>
-										{:else}
-											<button type="button"
-												class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
-												aria-label="Share search link"
-												onclick={() => shareSearch(debouncedQuery)}>Share search</button>
-										{/if}
+										<a
+											href={reportHref(result.passage.sourceId, result.passage.id, debouncedQuery)}
+											aria-label={`Report this passage: ${group.source.shortTitle} — ${result.passage.chapterRef ?? result.passage.title}`}
+											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"
+										>
+											Report
+										</a>
+										<button type="button"
+											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors ml-auto"
+											aria-label={confirmed?.key === `share:${result.passage.id}` ? confirmed.label : 'Share passage link'}
+											onclick={() => sharePassage(result.passage.sourceId, result.passage.id)}>
+											{confirmed?.key === `share:${result.passage.id}` ? confirmed.label : 'Share'}
+										</button>
 									</div>
 								</article>
 							{/each}

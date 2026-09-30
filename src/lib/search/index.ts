@@ -65,6 +65,14 @@ export const searchReady: Readable<boolean> = derived(_store, ($s) => $s.ready);
 /** Error message if loading failed. */
 export const searchError: Readable<string | null> = derived(_store, ($s) => $s.error);
 
+/** Named stages of the index load, for first-load progress UI. */
+export type SearchLoadStage = 'idle' | 'fetching' | 'preparing' | 'ready' | 'error';
+
+const _progress = writable<SearchLoadStage>('idle');
+
+/** The index loader's current stage. Advances fetching → preparing → ready. */
+export const searchProgress: Readable<SearchLoadStage> = { subscribe: _progress.subscribe };
+
 /** Index metadata (version, builtAt, sources). */
 export const indexMeta: Readable<IndexMeta | null> = derived(_store, ($s) => $s.meta);
 
@@ -129,6 +137,7 @@ export async function loadSearchIndex(): Promise<void> {
 
 async function _load(): Promise<void> {
 	try {
+		_progress.set('fetching');
 		const [msRes, passagesRes, metaRes] = await Promise.all([
 			fetch('/index/minisearch.json'),
 			fetch('/index/passages.json'),
@@ -139,6 +148,7 @@ async function _load(): Promise<void> {
 		if (!passagesRes.ok) throw new Error(`Failed to load passages.json: ${passagesRes.status}`);
 		if (!metaRes.ok) throw new Error(`Failed to load index-meta.json: ${metaRes.status}`);
 
+		_progress.set('preparing');
 		const [msJson, passagesJson, metaJson] = await Promise.all([
 			msRes.json(),
 			passagesRes.json(),
@@ -160,6 +170,7 @@ async function _load(): Promise<void> {
 			meta: metaJson as IndexMeta,
 			concordance: null
 		});
+		_progress.set('ready');
 
 		// Load concordance in background — non-blocking. Once loaded, search
 		// automatically switches to the concordance path (exact matching, no fuzzy).
@@ -167,8 +178,19 @@ async function _load(): Promise<void> {
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		_store.set({ ready: false, error: msg, ms: null, passages: null, meta: null, concordance: null });
+		_progress.set('error');
 		loadPromise = null; // allow retry
 	}
+}
+
+/**
+ * Re-attempt loading after a failure. Idempotent once the index is ready.
+ * The caller's pending search re-runs when `searchReady` flips.
+ */
+export async function retryLoad(): Promise<void> {
+	loadPromise = null;
+	_progress.set('idle');
+	return loadSearchIndex();
 }
 
 /** Fetch concordance.json in the background and update the store when ready. */

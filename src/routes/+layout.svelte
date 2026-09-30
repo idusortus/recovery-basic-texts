@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/stores';
 	import { afterNavigate } from '$app/navigation';
@@ -10,6 +10,8 @@
 	import { indexMeta } from '$lib/search/index';
 	import { checkIndexVersion } from '$lib/stores/version';
 	import { showToast } from '$lib/stores/toast';
+	import { SHORTCUTS } from '$lib/shortcuts';
+	import { focusFirstWithin, trapTabKey } from '$lib/focus-trap';
 
 	const { children }: { children: Snippet } = $props();
 	const canonicalUrl = $derived(new URL($page.url.pathname, 'https://basictexts.org').toString());
@@ -48,6 +50,68 @@
 		applyTheme(isDark);
 	}
 
+	// ─── Keyboard shortcuts ──────────────────────────────────────────────────────
+
+	let helpOpen = $state(false);
+	let helpDialog = $state<HTMLElement | null>(null);
+	let helpPreviousFocus: HTMLElement | null = null;
+
+	/** True when focus is in a control where `/` and `?` should type normally. */
+	function isTextEntry(target: EventTarget | null): boolean {
+		const node = target as HTMLElement | null;
+		if (!node) return false;
+		return (
+			node.tagName === 'INPUT' ||
+			node.tagName === 'TEXTAREA' ||
+			node.tagName === 'SELECT' ||
+			node.isContentEditable === true
+		);
+	}
+
+	async function openHelp() {
+		helpPreviousFocus = document.activeElement as HTMLElement | null;
+		helpOpen = true;
+		await tick();
+		if (helpDialog) focusFirstWithin(helpDialog);
+	}
+
+	function closeHelp() {
+		helpOpen = false;
+		helpPreviousFocus?.focus?.();
+		helpPreviousFocus = null;
+	}
+
+	function onHelpKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeHelp();
+			return;
+		}
+		if (helpDialog) trapTabKey(helpDialog, event);
+	}
+
+	// `/` focuses search; `?` opens this dialog. Both are ignored inside fields
+	// and when a modifier is held, so normal typing is never hijacked.
+	function onGlobalKeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+		// While a modal dialog is open it owns the keyboard, so shortcuts must not
+		// pull focus out behind the fixed overlay (app-shell focus-trap contract).
+		if (helpOpen) return;
+		if (document.querySelector('[aria-modal="true"]')) return;
+		if (isTextEntry(event.target)) return;
+		if (event.key === '/') {
+			const input = document.getElementById('search-input');
+			if (input) {
+				event.preventDefault();
+				input.focus();
+			}
+		} else if (event.key === '?') {
+			event.preventDefault();
+			if (helpOpen) closeHelp();
+			else void openHelp();
+		}
+	}
+
 	// ─── Index version check (LUW 8) ─────────────────────────────────────────────
 
 	$effect(() => {
@@ -81,6 +145,11 @@
 
 	onMount(() => {
 		initInstallPrompt();
+	});
+
+	onMount(() => {
+		window.addEventListener('keydown', onGlobalKeydown);
+		return () => window.removeEventListener('keydown', onGlobalKeydown);
 	});
 
 	// ─── GA SPA page-view tracking ───────────────────────────────────────────────
@@ -202,5 +271,47 @@
 	</footer>
 
 	<Toasts />
+
+	{#if helpOpen}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+			<div
+				bind:this={helpDialog}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="shortcut-help-title"
+				tabindex="-1"
+				onkeydown={onHelpKeydown}
+				class="w-full max-w-sm rounded shadow-lg border border-stone-200 dark:border-slate-700
+					   bg-white dark:bg-slate-900 p-5 focus:outline-none"
+			>
+				<h2
+					id="shortcut-help-title"
+					class="font-serif text-lg font-semibold text-navy dark:text-slate-200 mb-3"
+				>
+					Keyboard shortcuts
+				</h2>
+				<ul class="space-y-2 mb-5">
+					{#each SHORTCUTS as shortcut (shortcut.keys)}
+						<li class="flex items-center justify-between gap-4 text-sm text-[#1A1A1A] dark:text-slate-200">
+							<span>{shortcut.description}</span>
+							<kbd
+								class="px-1.5 py-0.5 rounded border border-stone-200 dark:border-slate-700
+									   bg-stone-50 dark:bg-slate-800 font-mono text-xs"
+							>{shortcut.keys}</kbd>
+						</li>
+					{/each}
+				</ul>
+				<button
+					type="button"
+					onclick={closeHelp}
+					class="w-full inline-flex items-center justify-center px-4 py-2 rounded bg-navy text-white
+						   text-sm font-medium hover:bg-navy/90 transition-colors focus-visible:outline-none
+						   focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+	{/if}
 </div>
 

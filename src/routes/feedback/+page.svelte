@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { Bug, Lightbulb, Send } from '@lucide/svelte';
 	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+	import { buildReportPrefill } from '$lib/feedback/report-context';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -32,10 +33,20 @@
 	const errorField = $derived(readString(form, 'errorField'));
 
 	// Preserve the user's input across a failed submit. Default the type so a
-	// choice is always made and there is no empty state.
-	const selectedType = $derived(readString(form, 'type') === 'bug' ? 'bug' : 'suggestion');
+	// choice is always made and there is no empty state. A "report this passage"
+	// link may preselect the type and prefill `details` from its URL params.
+	const urlType = $derived($page.url.searchParams.get('type'));
+	const typeFromForm = $derived(readString(form, 'type'));
+	const selectedType = $derived(
+		typeFromForm === 'bug' || typeFromForm === 'suggestion'
+			? typeFromForm
+			: urlType === 'bug'
+				? 'bug'
+				: 'suggestion'
+	);
 	const summaryValue = $derived(readString(form, 'summary'));
-	const detailsValue = $derived(readString(form, 'details'));
+	const reportContext = $derived(buildReportPrefill($page.url.searchParams));
+	const detailsValue = $derived(readString(form, 'details') || reportContext);
 
 	// A failed submit consumes the token; reset the widget for the next try.
 	$effect(() => {

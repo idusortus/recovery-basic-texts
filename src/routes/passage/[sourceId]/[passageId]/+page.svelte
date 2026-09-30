@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { loadSearchIndex, searchReady, searchError, getPassages, derivePassageParams } from '$lib/search/index';
@@ -10,6 +10,7 @@
 	import { ArrowLeft, ArrowRight, Copy, Share2 } from '@lucide/svelte';
 	import type { Passage, Source } from '$lib/types';
 	import { showToast } from '$lib/stores/toast';
+	import { reportHref } from '$lib/report-link';
 
 	// ─── Params ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,25 @@
 	let prevPassage = $state<Passage | null>(null);
 	let nextPassage = $state<Passage | null>(null);
 	let notFound = $state(false);
+
+	// Highlighted occurrences currently rendered, in document order, and the
+	// index of the active one. The initial index is the first mark inside the
+	// target passage (the occurrence the entry scroll centers).
+	let matches: HTMLElement[] = [];
+	let matchCount = $state(0);
+	let matchIndex = $state(0);
+
+	// In-place Copy/Share confirmation (Design D1) — independent of the toast.
+	let passageConfirmed = $state<{ key: string; label: string } | null>(null);
+	let passageConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function confirmPassageInPlace(key: string, label: string) {
+		passageConfirmed = { key, label };
+		if (passageConfirmTimer) clearTimeout(passageConfirmTimer);
+		passageConfirmTimer = setTimeout(() => {
+			passageConfirmed = null;
+		}, 2500);
+	}
 
 	// ─── Load ────────────────────────────────────────────────────────────────────
 
@@ -155,6 +175,7 @@
 	 * before the target has rendered (e.g. while the index is still loading).
 	 */
 	function applyQueryFocusAndScroll() {
+		collectMatches();
 		const el = document.getElementById(`passage-${passageId}`);
 		if (!el) return;
 		const mark = el.querySelector('mark');
@@ -169,6 +190,31 @@
 		} else {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}
+	}
+
+	/** Collect the rendered highlights and seed the current match from the target passage. */
+	function collectMatches() {
+		const root = document.querySelector('main');
+		if (!root) {
+			matches = [];
+			matchCount = 0;
+			matchIndex = 0;
+			return;
+		}
+		matches = Array.from(root.querySelectorAll<HTMLElement>('mark'));
+		matchCount = matches.length;
+		const target = document.getElementById(`passage-${passageId}`);
+		const firstInTarget = target ? matches.findIndex((mark) => target.contains(mark)) : -1;
+		matchIndex = firstInTarget >= 0 ? firstInTarget : 0;
+	}
+
+	/** Move the current match by `delta`, clamping at the ends. */
+	function goToMatch(delta: number) {
+		if (matches.length < 2) return;
+		const next = Math.min(Math.max(matchIndex + delta, 0), matches.length - 1);
+		if (next === matchIndex) return;
+		matchIndex = next;
+		matches[next].scrollIntoView({ block: 'center' });
 	}
 
 	/** Format the citation header: "SOURCE, Xth ED. — CHAPTER NAME" (all uppercase). */
@@ -193,6 +239,7 @@
 		try {
 			await navigator.clipboard.writeText(citation);
 			showToast('Passage copied to clipboard.', 'info', 2500);
+			confirmPassageInPlace('copy', 'Copied ✓');
 		} catch {
 			showToast('Could not copy — please select and copy manually.', 'warning');
 		}
@@ -203,14 +250,23 @@
 		try {
 			if (navigator.share) {
 				await navigator.share({ url, title: 'basictexts.org' });
+				confirmPassageInPlace('share', 'Shared ✓');
 			} else {
 				await navigator.clipboard.writeText(url);
 				showToast('Link copied to clipboard.', 'info', 2500);
+				confirmPassageInPlace('share', 'Link copied');
 			}
-		} catch {
-			// User cancelled
+		} catch (err) {
+			// AbortError is the user dismissing the native share sheet; anything
+			// else is a real failure and must be surfaced, never shown as success.
+			if (err instanceof Error && err.name === 'AbortError') return;
+			showToast('Could not share — please copy the address manually.', 'warning');
 		}
 	}
+
+	onDestroy(() => {
+		if (passageConfirmTimer) clearTimeout(passageConfirmTimer);
+	});
 </script>
 
 <svelte:head>
@@ -321,7 +377,7 @@
 
 			<!-- Actions -->
 			{#if source.displayMode === 'full-text'}
-				<div class="flex items-center gap-4 mb-8">
+				<div class="flex items-center gap-4 mb-4">
 					<button
 						type="button"
 						onclick={copyPassage}
@@ -329,7 +385,11 @@
 							   hover:text-navy dark:hover:text-slate-300 transition-colors"
 					>
 						<Copy size={14} aria-hidden={true} />
-						{chapterPassages.length > 0 ? 'Copy chapter' : 'Copy passage'}
+						{passageConfirmed?.key === 'copy'
+							? passageConfirmed.label
+							: chapterPassages.length > 0
+								? 'Copy chapter'
+								: 'Copy passage'}
 					</button>
 					<button
 						type="button"
@@ -338,7 +398,53 @@
 							   hover:text-navy dark:hover:text-slate-300 transition-colors"
 					>
 						<Share2 size={14} aria-hidden={true} />
-						Share
+						{passageConfirmed?.key === 'share' ? passageConfirmed.label : 'Share'}
+					</button>
+				</div>
+			{/if}
+
+			<!-- Report this passage (prefills the anonymous feedback form) -->
+			<div class="mb-8">
+				<a
+					href={reportHref(sourceId ?? '', passageId ?? '', query)}
+					class="inline-flex items-center gap-1.5 text-xs text-stone-400 dark:text-slate-500
+						   hover:text-navy dark:hover:text-slate-300 transition-colors"
+				>
+					Report this passage
+				</a>
+			</div>
+
+			<!-- Match navigation (highlighted occurrences only) -->
+			{#if matchCount >= 2}
+				<div class="flex items-center gap-3 mb-8" role="group" aria-label="Match navigation">
+					<button
+						type="button"
+						onclick={() => goToMatch(-1)}
+						disabled={matchIndex === 0}
+						class="inline-flex items-center gap-1.5 text-sm text-stone-400 dark:text-slate-500
+							   hover:text-navy dark:hover:text-slate-300 transition-colors
+							   disabled:opacity-40 disabled:cursor-not-allowed"
+					>
+						<ArrowLeft size={14} aria-hidden={true} />
+						Previous match
+					</button>
+					<span
+						class="text-xs text-stone-400 dark:text-slate-500 tabular-nums"
+						aria-live="polite"
+						aria-atomic="true"
+					>
+						Match {matchIndex + 1} of {matchCount}
+					</span>
+					<button
+						type="button"
+						onclick={() => goToMatch(1)}
+						disabled={matchIndex === matchCount - 1}
+						class="inline-flex items-center gap-1.5 text-sm text-stone-400 dark:text-slate-500
+							   hover:text-navy dark:hover:text-slate-300 transition-colors
+							   disabled:opacity-40 disabled:cursor-not-allowed"
+					>
+						Next match
+						<ArrowRight size={14} aria-hidden={true} />
 					</button>
 				</div>
 			{/if}

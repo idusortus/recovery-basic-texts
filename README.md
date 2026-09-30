@@ -45,6 +45,11 @@ pnpm run test:search       # shared normalization + MiniSearch/concordance two-p
 pnpm run test:concordance  # concordance tokenizer offsets
 pnpm run test:feedback     # feedback issue builder
 pnpm run test:source-badge # filter-chip accent contrast (fill / label / badge ring)
+pnpm run test:install-prompt # PWA install prompt initialized exactly once
+pnpm run test:source-link  # non-full-text "read at official source" link template resolution
+pnpm run test:url-state    # shareable search URL (q / phrase / sources) serialize + parse
+pnpm run test:zero-result  # zero-result recovery suggestions (topics + one did-you-mean)
+pnpm run test:report-prefill # "report this passage" feedback prefill (no PII, no new fields)
 pnpm run test:reflection   # Daily Reflections teaser bound + offline fallback (no aa.org fetch)
 pnpm run test:ingest       # ingest Stage 3 running-header stripping (python3)
 ```
@@ -139,6 +144,28 @@ wrangler pages secret put GITHUB_TOKEN --project-name basictexts
   labels (and `bug`) already exist on this repository.
 
 Run the dependency-free feedback-logic tests with `pnpm run test:feedback`.
+
+## Search analytics (maintainers)
+
+Anonymous submitted searches are queued client-side and flushed to
+`functions/api/log.ts`, which appends them to the `SEARCH_LOG` KV namespace.
+There is intentionally **no public stats surface**: the former `/stats` page and
+`/api/stats` endpoint were removed because they exposed every logged query to any
+visitor without authentication.
+
+Maintainers read the log out-of-band with Wrangler:
+
+```bash
+# List recent log keys (keys are ISO-timestamp-prefixed and sortable)
+wrangler kv key list --binding SEARCH_LOG --remote
+
+# Read one record
+wrangler kv key get "<key>" --binding SEARCH_LOG --remote
+```
+
+Records contain only `{ q, resultCount, sourceFilter, ts }` — no IP address, user
+agent, cookie, or identifier. `POST /api/log` remains an unauthenticated write
+endpoint that accepts only those bounded fields, and it never affects search.
 
 ## Project structure
 

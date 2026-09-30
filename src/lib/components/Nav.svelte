@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { online } from '$lib/stores/online';
+	import { focusFirstWithin, trapTabKey } from '$lib/focus-trap';
 	import {
 		Search,
 		BookOpen,
@@ -24,14 +26,15 @@
 	} = $props();
 
 	let mobileOpen = $state(false);
+	let mobilePanel = $state<HTMLElement | null>(null);
+	let previousFocus: HTMLElement | null = null;
 
 	const navLinks = [
 		{ href: '/', label: 'Concordance', Icon: Search },
 		{
-			href: 'https://www.aa.org/daily-reflections',
+			href: '/reflection',
 			label: 'Daily Reflection',
-			Icon: BookOpen,
-			external: true
+			Icon: BookOpen
 		},
 		{ href: '/topics', label: 'Topics', Icon: Tag },
 		{ href: '/sources', label: 'Sources', Icon: Library },
@@ -44,8 +47,28 @@
 		return $page.url.pathname.startsWith(href);
 	}
 
+	async function openMobile() {
+		previousFocus = document.activeElement as HTMLElement | null;
+		mobileOpen = true;
+		await tick();
+		if (mobilePanel) focusFirstWithin(mobilePanel);
+	}
+
 	function closeMobile() {
 		mobileOpen = false;
+		previousFocus?.focus?.();
+		previousFocus = null;
+	}
+
+	function onOverlayKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeMobile();
+			return;
+		}
+		if (mobilePanel) trapTabKey(mobilePanel, event);
+		// The open overlay owns the keyboard; don't let global-shortcut listeners act.
+		event.stopPropagation();
 	}
 </script>
 
@@ -82,11 +105,9 @@
 
 			<!-- Desktop nav links -->
 			<div class="hidden md:flex items-center gap-1 ml-2">
-				{#each navLinks as { href, label, Icon, external = false } (href)}
+				{#each navLinks as { href, label, Icon } (href)}
 					<a
 						{href}
-						target={external ? '_blank' : undefined}
-						rel={external ? 'noopener noreferrer' : undefined}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium
 							   transition-colors duration-150
 							   {isActive(href)
@@ -144,7 +165,7 @@
 			<!-- Mobile hamburger -->
 			<button
 				type="button"
-				onclick={() => (mobileOpen = !mobileOpen)}
+				onclick={() => (mobileOpen ? closeMobile() : void openMobile())}
 				class="md:hidden flex items-center justify-center w-8 h-8 rounded
 					   text-stone-500 dark:text-slate-400
 					   hover:bg-stone-100 dark:hover:bg-slate-800
@@ -165,6 +186,9 @@
 	<!-- Mobile overlay menu -->
 	{#if mobileOpen}
 		<div
+			bind:this={mobilePanel}
+			onkeydown={onOverlayKeydown}
+			tabindex="-1"
 			class="md:hidden border-t border-stone-200 dark:border-slate-800
 				   bg-stone-50 dark:bg-slate-950 animate-fade-in"
 			role="dialog"
@@ -172,11 +196,9 @@
 			aria-label="Mobile navigation"
 		>
 			<div class="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
-				{#each navLinks as { href, label, Icon, external = false } (href)}
+				{#each navLinks as { href, label, Icon } (href)}
 					<a
 						{href}
-						target={external ? '_blank' : undefined}
-						rel={external ? 'noopener noreferrer' : undefined}
 						onclick={closeMobile}
 						class="flex items-center gap-2.5 px-3 py-2.5 rounded text-sm font-medium
 							   transition-colors duration-150

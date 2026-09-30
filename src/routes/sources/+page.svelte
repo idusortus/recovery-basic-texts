@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { allSources } from '$lib/corpus/registry';
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
+	import DisplayModeLegend from '$lib/components/DisplayModeLegend.svelte';
 
 	const COPYRIGHT_LABELS: Record<string, string> = {
 		'public-domain': 'Public domain',
@@ -47,6 +48,8 @@
 	<p class="text-stone-500 dark:text-slate-400 text-sm mb-8">
 		All texts indexed by basictexts.org, with copyright status and display mode.
 	</p>
+
+	<DisplayModeLegend />
 
 	<!-- Source cards -->
 	<div class="space-y-4 mb-12">
