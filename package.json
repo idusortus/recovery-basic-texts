@@ -11,6 +11,7 @@
     "validate:corpus": "node corpus/scripts/validate.js",
     "verify:citations": "node corpus/scripts/verify-citations.mjs",
     "test:concordance": "node corpus/scripts/test-concordance-offsets.mjs",
+    "test:corpus-headers": "node corpus/scripts/test-corpus-headers.mjs",
     "test:feedback": "node scripts/test-feedback.mjs",
     "test:ingest": "python3 corpus/scripts/test-ingest-headers.py",
     "test:search": "node corpus/scripts/build-index.mjs && node scripts/test-search.mjs",

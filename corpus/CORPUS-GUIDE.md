@@ -237,6 +237,34 @@ Optional: if Stage 3 WARNING output shows uncaught running headers, create a str
 python corpus/scripts/ingest.py ... --strip-patterns corpus/raw/<source-id>-strip.json
 ```
 
+**Running headers (page number + running title).** Stage 3 strips a page number adjacent to an
+ALL-CAPS running title using rules tried in **strict priority order**:
+
+1. number-first — `^NUM <title>` (e.g. `82 ALCOHOLICS ANONYMOUS`)
+2. title-last — `^<title> NUM` (e.g. `INTO ACTION 81`, `BILL'S STORY 3`)
+3. roman front-matter, either order — `^ROMAN <title>` / `^<title> ROMAN` (e.g. `xii PREFACE`,
+   `FOREWORD xvii`, `XII PREFACE`)
+
+`<title>` is bounded to the known running titles, and a roman numeral must be a *valid* numeral
+of 2+ characters, so ordinary words such as `did` and `CIVIL` are never treated as page numbers.
+These rules apply only to lines near a `<<<PAGE N>>>` marker, so genuine all-caps prose is never
+stripped. If Stage 3 still reports survivors, add a `--strip-patterns` file (above).
+
+The committed `corpus/sources/big-book-2ed.json` predates these rules and still carried **172**
+leaked running-header prefixes. They are repaired in place by
+`corpus/scripts/fix-running-headers.mjs` (default dry run; `--write` applies). It strips only the
+leading header prefix, keeps every other passage field, and preserves list numbers (e.g.
+`60 ALCOHOLICS ANONYMOUS 12. …` keeps the twelfth-step `12.`) and the first body word (e.g.
+`2 ALCOHOLICS ANONYMOUS I took …` keeps `I took …`). Regressions are caught by
+`npm run test:corpus-headers` (`corpus/scripts/test-corpus-headers.mjs`), which scans every
+enabled source for a passage that begins with a header shape and asserts a fixed fixture list.
+
+**Known follow-up — leading word fragments.** Stripping a header can expose a first word that
+the PDF's own page break truncated (e.g. `cial reference service.` from "commercial",
+`ter chance`, `tions we have found`) in roughly **15–20** of the 172 repaired passages. This is a
+separate pagination/extraction artifact, not a header defect, and is intentionally **not** fixed
+here; it is tracked for a follow-up pass (repair in place, or address in the ingest pipeline).
+
 **After each run, review:**
 - `pipeline-artifacts/<source-id>/<ts>/08-audit-report.txt` — flagged passages and vocabulary check
 - `pipeline-artifacts/<source-id>/<ts>/04-hyphen-decisions.log` — all hyphen repair decisions; spot-check the DEFAULT-rule joins listed in the audit report

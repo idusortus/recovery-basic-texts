@@ -12,6 +12,19 @@
 
 ---
 
+## 2026-09-29 — Ingest roman header rule requires a front-matter title allowlist
+
+**Context:** Hardening `ingest.py` Stage 3 for `fix-corpus-running-headers`, the roman rule matched any `[ivxlcdmIVXLCDM]{2,}` token adjacent to any all-caps run, gated only by `_is_roman_numeral`. That grammar accepts structurally-valid English words — `mix` is `M` + `IX` — so `MIX IT UP` near a page marker would be stripped as a front-matter page number, and the test's "not a valid numeral" comment was false.
+**Choice:** The roman rules (`_RUNNING_HEADER_ROMAN_FIRST_RE`/`_LAST_RE`) now require adjacency to an explicit `_FRONT_MATTER_TITLES` allowlist (`FOREWORD TO THE FIRST EDITION`, `THE DOCTOR'S OPINION`, `CONTENTS`, `FOREWORD`, `PREFACE`), matched longest-first; `_is_roman_numeral` stays as a secondary check. The Node detector `running-header-utils.mjs` keeps its allowlist-only check (it never validated the numeral), so the two differ deliberately — the shared allowlist signal, not the numeral shape, is what prevents false positives.
+**Trade-offs:** A front-matter heading absent from the list is not stripped by ingest until added (the regression test's broad, non-allowlisted scan still surfaces unknown candidates); appendix section headings (`II SPIRITUAL EXPERIENCE`) are no longer treated as roman page headers, which is correct because their roman token is a section number, not a page number.
+**Revisit:** If a re-ingest surfaces a front-matter heading outside the list, or the corpus gains new front-matter sections.
+
+## 2026-09-29 — Bound running-header detection to known titles (corpus repair)
+**Context:** Implementing the `fix-corpus-running-headers` repair, the design's literal rules (`CAPS_RUN` = two or more ALL-CAPS tokens) would swallow the first body word of `2 ALCOHOLICS ANONYMOUS I took a night law course` — the greedy run absorbs the body word `I`, silently dropping it. The design already offered an "optional allowlist cross-check" for exactly this class of false positive.
+**Choice:** Make the allowlist mandatory: the ALL-CAPS run adjacent to the page number is bounded to a fixed list of the 17 observed running titles (`corpus/scripts/running-header-utils.mjs` `RUNNING_TITLES`), matched longest-first. Applied to the committed corpus this still yields exactly 172 matches (79 Rule 1 + 78 Rule 2 + 15 Rule 3) with correct remainders, and the two `…ALCOHOLICS ANONYMOUS I…` passages now strip to `…ALCOHOLICS ANONYMOUS` + `I …` instead of eating the `I`.
+**Trade-offs:** New/unknown header titles are not stripped until added to the list (the regression test's corpus scan uses a separate broad, non-allowlisted shape so unknown headers still surface as candidates).
+**Revisit:** If a future re-ingest produces a header title not in the list, or the ingest pipeline itself starts stripping headers (tasks 6.x).
+
 ## 2026-09-29 — Untrack generated/local state, not just gitignore it
 **Context:** A review added `.wrangler/` and `__pycache__/` to `.gitignore`, but six files under `.wrangler/state/v3/...` were already tracked (since June), so the ignore entry is inert and local `wrangler dev` state can still be committed. The repo likewise tracks `.venv/` (9,308 files) and a 62 MB `diff.txt`.
 **Choice:** A `.gitignore` entry only prevents *new* files being tracked. Any artifact already tracked must be removed from the index (`git rm --cached -r <path>`, committing the deletion) before an ignore rule is considered effective.

@@ -20,7 +20,8 @@ committed corpus was never regenerated, so the leaked headers remain in `main`.
   chapter-opening pages, not header pages) valid.
 - **Rebuild and re-verify the derived artifacts.** Regenerate `static/index/*` (the header
   words disappear from the term index and concordance) and re-run corpus validation and
-  citation verification; the index-version guard will fail until the rebuild is committed.
+  citation verification; the index-version guard will fail until the index is rebuilt and
+  present in the working tree (gitignored, not committed).
 - **Requantify the defect across every source** as part of the fix so the scope is explicit.
 - **Add a dependency-free regression test** that asserts no passage in any enabled,
   full-text corpus begins with a running-header pattern, and wire it into the existing

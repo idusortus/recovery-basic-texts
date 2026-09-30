@@ -85,6 +85,11 @@ headings and in-text attribution strings SHALL remain intact.
 - **WHEN** the passage whose text previously began `60 ALCOHOLICS ANONYMOUS 12. Having had a spiritual awakening` is inspected
 - **THEN** its text still begins with `12.` — the twelfth-step list number is preserved, not stripped with the header
 
+#### Scenario: The first body word is not swallowed
+
+- **WHEN** the passage whose text previously began `2 ALCOHOLICS ANONYMOUS I took a night law course` is inspected
+- **THEN** its text still contains `I took a night law course` — the strip does not consume the single-letter body word `I` that follows the header
+
 ### Requirement: Corpus validation and citation verification pass after repair
 
 After the repair, corpus schema and referential validation SHALL pass, and pagemap citation
@@ -114,7 +119,7 @@ a fresh hash of the corpus inputs.
 #### Scenario: Rebuild is deterministic
 
 - **WHEN** the index is built twice from the repaired corpus
-- **THEN** both builds produce byte-identical index outputs
+- **THEN** the three searchable outputs (`minisearch.json`, `passages.json`, `concordance.json`) and the `version` hash are byte-identical across both builds, while `index-meta.builtAt` is non-deterministic metadata stamped from the wall clock (and therefore is the only expected cross-build difference)
 
 #### Scenario: Header-only terms no longer pollute results
 

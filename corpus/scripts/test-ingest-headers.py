@@ -62,6 +62,53 @@ for line in (
     check(f"not header: {line!r}", not ingest._is_running_header(line))
 
 
+# ─── 1b. Roman front-matter headers (incl. uppercase) ─────────────────────────
+
+print("\n[test] roman-numeral front-matter headers")
+for line in (
+    "xii PREFACE",
+    "FOREWORD xvii",
+    "xxiv THE DOCTOR'S OPINION",
+    "THE DOCTOR'S OPINION xxv",
+    "XII PREFACE",       # uppercase roman, title last
+    "FOREWORD XXI",      # uppercase roman, title first
+    "xiv FOREWORD TO THE FIRST EDITION",  # long title must win over its FOREWORD prefix
+):
+    check(f"is header: {line!r}", ingest._is_running_header(line))
+
+for line in (
+    "did",                  # roman letters only, but not a valid roman numeral
+    "CIVIL",                # ditto
+    "CIVIL WAR",
+    "We did what we could",
+    "mix",                  # structurally valid (M + IX), but not adjacent to a front-matter title
+    "MIX IT UP",            # roman-looking word + ALL-CAPS words, but no front-matter title
+    "STEP 12",              # single caps word + arabic number is NOT a header
+):
+    check(f"not header: {line!r}", not ingest._is_running_header(line))
+
+
+# ─── 1c. Header-prefix strip: Rule 1 -> Rule 4 priority ───────────────────────
+
+print("\n[test] header-prefix strip keeps list numbers but drops separated page numbers")
+check(
+    "Rule 1 then Rule 4 keeps the twelfth-step list number",
+    ingest.strip_running_header_prefix(
+        "60 ALCOHOLICS ANONYMOUS 12. Having had a spiritual awakening"
+    )
+    == "12. Having had a spiritual awakening",
+)
+check(
+    "Rule 4 strips a separated trailing page number",
+    ingest.strip_running_header_prefix("1 THERE IS A SOLUTION 29 enough, we find")
+    == "enough, we find",
+)
+check(
+    "non-header line returns None",
+    ingest.strip_running_header_prefix("Rarely have we seen a person fail") is None,
+)
+
+
 # ─── 2. Stage 3 integration ───────────────────────────────────────────────────
 
 print("\n[test] stage_3_strip removes headers but preserves prose")
@@ -107,6 +154,43 @@ check(
     "all-caps line away from a marker survives",
     "WE WROTE THE YEAR 1939" in output,
 )
+
+# ─── 2b. Roman front-matter + list-number integrity ──────────────────────────
+
+print("\n[test] stage_3_strip removes roman headers and keeps the twelfth-step number")
+
+fixture2 = "\n".join(
+    [
+        "<<<PAGE 4>>>",
+        "",
+        "xii PREFACE",
+        "been preserved and is followed by a second on describing Alcoholics Anonymous.",
+        "",
+        "<<<PAGE 5>>>",
+        "",
+        "FOREWORD xvii",
+        "could. It also indicated that strenuous work was needed.",
+        "",
+        "<<<PAGE 88>>>",
+        "",
+        "60 ALCOHOLICS ANONYMOUS",
+        "12. Having had a spiritual awakening as the result of these steps, we tried to carry this message.",
+        "",
+    ]
+)
+
+with tempfile.TemporaryDirectory() as tmp:
+    tmp_path = Path(tmp)
+    input_path = tmp_path / "02-normalized.txt"
+    input_path.write_text(fixture2, encoding="utf-8")
+    out_path = ingest.stage_3_strip(input_path, tmp_path, logger, None)
+    output2 = out_path.read_text(encoding="utf-8")
+
+check("roman-first header removed", "xii PREFACE" not in output2)
+check("roman-last header removed", "FOREWORD xvii" not in output2)
+check("arabic header removed", "60 ALCOHOLICS ANONYMOUS" not in output2)
+check("twelfth-step list number preserved", "12. Having had a spiritual awakening" in output2)
+check("roman body preserved", "been preserved and is followed" in output2)
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
 

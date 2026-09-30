@@ -144,21 +144,114 @@ _PARA_HYPHEN_RE = re.compile(r"([A-Za-z]+)-\n{2,}[ \t]*([a-z]+)")
 # A page number adjacent to a short ALL-CAPS running title, e.g.
 #   "82 ALCOHOLICS ANONYMOUS"   (number first — even pages)
 #   "INTO ACTION 81"            (number last  — odd pages)
-# The title must contain at least two all-caps words, which excludes
-# legitimate single-word headings such as "STEP 12".  These patterns are only
-# applied to lines near a <<<PAGE N>>> marker (see stage_3_strip), so genuine
-# all-caps prose is never stripped.
-_CAPS_RUN = r"[A-Z][A-Z0-9.,'’\-]*(?: [A-Z][A-Z0-9.,'’\-]*)+"
-_RUNNING_HEADER_NUMBER_FIRST_RE = re.compile(rf"^\d{{1,4}}\s+{_CAPS_RUN}$")
-_RUNNING_HEADER_NUMBER_LAST_RE = re.compile(rf"^{_CAPS_RUN}\s+\d{{1,4}}$")
+#   "xii PREFACE"               (roman front-matter page, title last)
+#   "FOREWORD xvii"             (roman front-matter page, title first)
+#   "XII PREFACE"               (uppercase roman)
+# The arabic-title case requires at least two all-caps words, which excludes
+# legitimate single-word headings such as "STEP 12".
+#
+# The roman front-matter case additionally requires the numeral to sit next to
+# one of the known front-matter headings below.  A bare roman-looking token is
+# NOT enough: ordinary English words made only of roman letters are structurally
+# valid numerals ("mix" = M + IX), so without the allowlist a line such as
+# "MIX IT UP" near a page marker would be stripped as a front-matter page
+# number.  The allowlist is matched longest-first so "FOREWORD TO THE FIRST
+# EDITION" wins over its "FOREWORD" prefix.
+#
+# These patterns are only applied to lines near a <<<PAGE N>>> marker (see
+# stage_3_strip), so genuine all-caps prose is never stripped.
+_CAPS_WORD = r"[A-Z][A-Z0-9.,'’\-]*"
+_CAPS_RUN = rf"{_CAPS_WORD}(?: {_CAPS_WORD})+"
+_ROMAN_TOKEN = r"[ivxlcdmIVXLCDM]{2,}"
+
+# Front-matter headings printed next to a roman page number.  Keep this list
+# explicit: adjacency to one of these titles — not the numeral shape — is what
+# distinguishes a real front-matter page header from prose that merely happens
+# to begin with roman letters.
+_FRONT_MATTER_TITLES: tuple[str, ...] = (
+    "FOREWORD TO THE FIRST EDITION",
+    "THE DOCTOR'S OPINION",
+    "CONTENTS",
+    "FOREWORD",
+    "PREFACE",
+)
+_FRONT_MATTER_TITLE_RE = "|".join(
+    re.escape(t) for t in sorted(_FRONT_MATTER_TITLES, key=len, reverse=True)
+)
+
+_RUNNING_HEADER_NUMBER_FIRST_RE = re.compile(rf"^\d{{1,4}}\s+{_CAPS_RUN}(?![A-Za-z0-9])")
+_RUNNING_HEADER_NUMBER_LAST_RE = re.compile(rf"^{_CAPS_RUN}\s+\d{{1,4}}(?![A-Za-z0-9])")
+_RUNNING_HEADER_ROMAN_FIRST_RE = re.compile(
+    rf"^(?P<num>{_ROMAN_TOKEN})\s+(?:{_FRONT_MATTER_TITLE_RE})(?![A-Za-z0-9])"
+)
+_RUNNING_HEADER_ROMAN_LAST_RE = re.compile(
+    rf"^(?:{_FRONT_MATTER_TITLE_RE})\s+(?P<num>{_ROMAN_TOKEN})(?![A-Za-z0-9])"
+)
+
+# Roman numerals used as front-matter page numbers must be valid roman numerals
+# of at least two characters.  A bare [ivxlcdm]{2,} character class would also
+# match ordinary English words made only of roman letters ("did", "CIVIL"); the
+# grammar below rejects those.  It cannot reject every word — "mix" is
+# structurally valid (M + IX) — so the title allowlist above is the signal that
+# actually keeps such words out.
+_ROMAN_NUMERAL_RE = re.compile(
+    r"(?i)^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$"
+)
+
+
+def _is_roman_numeral(token: str) -> bool:
+    """True for a valid roman numeral of 2+ characters (rejects words like 'did')."""
+    return len(token) >= 2 and bool(_ROMAN_NUMERAL_RE.match(token))
+
+
+def _running_header_prefix(line: str) -> str | None:
+    """
+    Return the leading running-header text of `line`, or None.
+
+    Rules are tried in priority order: number-first, title-last, then roman
+    front-matter either order.  A roman match additionally requires the numeral
+    to be a valid roman numeral (`_is_roman_numeral`) AND to be adjacent to an
+    allowlisted front-matter title (`_FRONT_MATTER_TITLES`), so ordinary words
+    such as "mix" are never treated as front-matter page numbers.
+    """
+    m = _RUNNING_HEADER_NUMBER_FIRST_RE.match(line)
+    if m:
+        return m.group(0)
+    m = _RUNNING_HEADER_NUMBER_LAST_RE.match(line)
+    if m:
+        return m.group(0)
+    m = _RUNNING_HEADER_ROMAN_FIRST_RE.match(line)
+    if m and _is_roman_numeral(m.group("num")):
+        return m.group(0)
+    m = _RUNNING_HEADER_ROMAN_LAST_RE.match(line)
+    if m and _is_roman_numeral(m.group("num")):
+        return m.group(0)
+    return None
+
+
+def strip_running_header_prefix(line: str) -> str | None:
+    """
+    Strip a leading running header from `line` and return the remainder, or
+    None when `line` does not begin with a header.
+
+    After the header, a page number standing alone at the start of the remainder
+    is removed ("… 29 enough" -> "enough"), but never a list / ordinal marker
+    such as the twelfth-step "12." ("60 ALCOHOLICS ANONYMOUS 12. Having…" keeps
+    "12. Having…").
+    """
+    header = _running_header_prefix(line)
+    if header is None:
+        return None
+    remainder = line[len(header):].lstrip()
+    trailing = re.match(r"^\d{1,4}(?=\s)", remainder)
+    if trailing:
+        remainder = remainder[trailing.end():].lstrip()
+    return remainder
 
 
 def _is_running_header(line: str) -> bool:
-    """True when `line` looks like a running page header/footer with a page number."""
-    return bool(
-        _RUNNING_HEADER_NUMBER_FIRST_RE.match(line)
-        or _RUNNING_HEADER_NUMBER_LAST_RE.match(line)
-    )
+    """True when the whole line is exactly a running page header/footer."""
+    return strip_running_header_prefix(line) == ""
 
 
 # ---------------------------------------------------------------------------

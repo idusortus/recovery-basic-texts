@@ -59,8 +59,8 @@ Current state and constraints that shape the approach:
   deterministic, reproducible mechanism whose detection logic can be re-run and tested.
 - Change only the `text` field of affected passages; preserve every other field and the
   pagemap/citation guarantees.
-- Rebuild and commit the derived index, and add a dependency-free regression test that fails
-  if a leaked header ever returns.
+- Rebuild the derived index and keep it present in the working tree (gitignored, not committed),
+  and add a dependency-free regression test that fails if a leaked header ever returns.
 - Extend the pipeline's own detection so a future ingest does not reintroduce the same gaps.
 
 **Non-Goals:**
@@ -92,15 +92,16 @@ legitimate content (e.g. `ALCOHOLICS ANONYMOUS, p. 25`, `WORLD SERVICES, INC. BO
 `…AS WE UNDERSTOOD HIM. 4`) would false-positive. The rules are applied **only** to the start
 of each passage's whitespace-normalised text and matched prefixes are stripped from the front.
 
-Rules are tried in **strict priority order**; the first that matches wins. `CAPS` = one all-caps
-token (`[A-Z][A-Z0-9.'’\-]*`); `CAPS_RUN` = two or more `CAPS` tokens; `NUM` = `\d{1,4}`;
-`ROMAN` = a lowercase roman numeral of two or more characters (`[ivxlcdm]{2,}`).
+Rules are tried in **strict priority order**; the first that matches wins. `NUM` = `\d{1,4}`;
+`ROMAN` = a lowercase roman numeral of two or more characters (`[ivxlcdm]{2,}`). The ALL-CAPS
+run adjacent to the page number is **bounded to a fixed allowlist of the observed running
+titles** (see "Required title allowlist" below), applied longest-first.
 
-1. **Rule 1 — Number-first:** `^NUM CAPS_RUN` → strip. e.g. `82 ALCOHOLICS ANONYMOUS`,
+1. **Rule 1 — Number-first:** `^NUM <title>` → strip. e.g. `82 ALCOHOLICS ANONYMOUS`,
    `60 ALCOHOLICS ANONYMOUS`, `1 THERE IS A SOLUTION`. (matches 79)
-2. **Rule 2 — Title-last:** `^CAPS_RUN NUM` → strip. e.g. `BILL'S STORY 3`, `INTO ACTION 81`,
+2. **Rule 2 — Title-last:** `^<title> NUM` → strip. e.g. `BILL'S STORY 3`, `INTO ACTION 81`,
    `TO WIVES 105`. (matches 78)
-3. **Rule 3 — Roman front-matter, either order:** `^ROMAN (CAPS )*CAPS` or `^(CAPS )+ROMAN` →
+3. **Rule 3 — Roman front-matter, either order:** `^ROMAN <title>` or `^<title> ROMAN` →
    strip. e.g. `xii PREFACE`, `FOREWORD xvii`, `xxiv THE DOCTOR'S OPINION`. (matches 15)
 4. **Rule 4 — Trailing-page-number cleanup (conditional; runs only after Rule 1/2/3 matched).**
    After a header prefix is stripped, if the **remainder begins with a standalone number token**
@@ -108,10 +109,11 @@ token (`[A-Z][A-Z0-9.'’\-]*`); `CAPS_RUN` = two or more `CAPS` tokens; `NUM` =
    header's offset page number. Do **not** strip when the number is followed by `.` or any list
    / ordinal punctuation, because that is a list marker, not a page number. (matches 1)
 
-Every match must end at a non-word boundary (whitespace or end of string), so a header never
-swallows the first body word.
+`<title>` is restricted to the allowlist, and every match must end at a non-word boundary
+(whitespace or end of string). Together (allowlist bound + boundary) this is what stops a header
+from swallowing the first body word.
 
-**Rule 4 in practice — the only two passages that look like `^NUM CAPS_RUN NUM`:**
+**Rule 4 in practice — the only two passages that look like `^NUM <title> NUM`:**
 
 | Passage | Text prefix | Rule 1 strips | Rule 4 outcome | Result |
 | --- | --- | --- | --- | --- |
@@ -143,11 +145,15 @@ whitespace requirement keeps list markers safe.
   `Chapter N <TITLE> …` and do not match any rule. Confirmed: applying the rules to the first
   passage of all six `big-book-2ed` pagemap entries yields zero matches, so the anchors are
   unaffected.
-- **Optional allowlist cross-check.** As a belt-and-braces guard, the repair can additionally
-  require that the all-caps run is one of the observed running titles
-  (`ALCOHOLICS ANONYMOUS`, the eleven chapter titles, `PREFACE`, `FOREWORD`,
-  `THE DOCTOR'S OPINION`). The dry-run report shows any match that fails the allowlist so the
-  operator can confirm or exclude it before writing.
+- **Required title allowlist (prevents swallowing the first body word).** The ALL-CAPS run is
+  bounded to the known titles above (matched longest-first), and **this is required, not
+  optional**. Without it, the plain `CAPS_RUN` shape (any two or more all-caps tokens) greedily
+  absorbs a following single-letter body word: `2 ALCOHOLICS ANONYMOUS I took a night law
+  course` would strip `2 ALCOHOLICS ANONYMOUS I` and silently drop the `I`. Bounding the run to
+  the allowlisted title `ALCOHOLICS ANONYMOUS` strips only the header and leaves
+  `I took a night law course`. The dry-run report flags any candidate that does not resolve to a
+  known title, and the regression test scans the corpus with a separate broad, non-allowlisted
+  pattern so an unknown header title still surfaces instead of being silently ignored.
 
 **Gap in `ingest.py` to close:** extend `_is_running_header` (or add a companion) to cover the
 roman-numeral and single-word-adjacent-to-a-number cases, and extend
@@ -181,8 +187,9 @@ framework is introduced.
 ### Decision 5: Index must be rebuilt as part of the change
 
 Because `validate.js` hashes the corpus files, the repair invalidates `static/index/*`. The
-change rebuilds the index (`npm run build:index`) and commits `static/index/{minisearch,passages,
-concordance,index-meta}.json`. The version changing is what invalidates cached clients.
+change rebuilds the index (`npm run build:index`) so that `static/index/{minisearch,passages,
+concordance,index-meta}.json` are rebuilt and present in the working tree (gitignored, not
+committed). The version changing is what invalidates cached clients.
 
 ## Risks / Trade-offs
 
@@ -223,10 +230,13 @@ concordance,index-meta}.json`. The version changing is what invalidates cached c
 2. Apply the repair to `corpus/sources/big-book-2ed.json`.
 3. Run `node corpus/scripts/validate.js` and `node corpus/scripts/verify-citations.mjs`; confirm
    all pagemap anchors still verify.
-4. Run `npm run build:index` and commit the regenerated `static/index/*`.
+4. Run `npm run build:index` and confirm the regenerated `static/index/*` is present in the
+   working tree (gitignored, not committed).
 5. Add the regression test and run it in the same pass as the other tests.
-6. **Rollback:** a single `git revert` of the one commit restores the corpus and index; there is
-   no schema change, no data migration, and no app deployment coupling.
+6. **Rollback:** `git revert` of the corpus change restores `corpus/sources/big-book-2ed.json`,
+   then `npm run build:index` regenerates the working-tree `static/index/*` (the index is
+   gitignored and never committed, so it is not part of the revert). There is no schema change,
+   no data migration, and no app deployment coupling.
 
 ## Open Questions
 
