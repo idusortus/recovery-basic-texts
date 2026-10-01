@@ -52,7 +52,9 @@ See `proposal.md` — Why. Current state and constraints that shape the approach
 
 **Non-Goals:**
 
-- No new capability; no change to a standing requirement (ADDED-only delta).
+- No new capability. One standing requirement is carried as `MODIFIED` only to
+  scope its storage ban (see below) — no existing prohibition is dropped, and no
+  new account/bookmark/note is introduced.
 - No rate/pitch/voice control (deferred), no visual redesign, no new runtime
   dependency.
 - No external TTS service, no network, no transmission of preferences.
@@ -60,7 +62,7 @@ See `proposal.md` — Why. Current state and constraints that shape the approach
 
 ## Decisions
 
-### Both features belong to `passage-view`; no new capability, ADDED-only delta
+### Both features belong to `passage-view`; no new capability; one scoping MODIFY
 
 The behavior is entirely about the passage page: rendering controls around the
 passage body and reading that body aloud. `passage-view` already owns passage
@@ -70,12 +72,25 @@ surface (`openspec/specs/search-ui/spec.md`), `app-shell` owns app-wide shell
 chrome; neither owns passage-page rendering, and placing these there would split
 one page's behavior across specs.
 
-Both requirements are **new concerns layered on** existing behavior — nothing
-existing changes — so the delta uses `## ADDED Requirements` only, with no
-`MODIFIED`/`REMOVED`. Alternatives considered: a new `passage-reader-controls`
-capability (rejected — it would fragment passage-page behavior and duplicate the
+The two features themselves are **new concerns layered on** existing behavior, so
+they are `## ADDED Requirements`. The delta is **not** ADDED-only, however: the
+standing guardrail requirement "Passage rendering stays within the MVP
+guardrails" has a scenario (`No persistence beyond the URL is introduced`) whose
+THEN says "no storage beyond the URL is used". Namespaced `localStorage` for
+reader preferences would falsify that clause if read literally, so the delta
+carries a `## MODIFIED Requirements` block for that requirement. The MODIFIED
+copy reproduces the requirement text and **every** existing scenario with its
+header literally unchanged, keeps every existing prohibition
+(no full text for non-`full-text` sources; no auth/accounts/bookmarks/notes; no
+non-AA content), and only scopes the storage sentence: the storage ban applies to
+the **highlight/focus state** (still URL-only), while ONE namespaced,
+device-local, never-transmitted **display-preference** key is explicitly
+permitted. Alternatives considered: a new `passage-reader-controls` capability
+(rejected — it would fragment passage-page behavior and duplicate the
 `passage-view` purpose); modifying `search-ui` (rejected — wrong surface);
-putting the Listen control in `app-shell` (rejected — it is not shell chrome).
+putting the Listen control in `app-shell` (rejected — it is not shell chrome);
+leaving the guardrail untouched and hoping it is read loosely (rejected — the
+scoping decision belongs in the artifact, not at implementation time).
 
 ### Reader preferences: one pure module + a thin localStorage adapter
 
@@ -104,6 +119,13 @@ Semantics:
   resolve to `null`, so the component applies **no inline style** at the
   default and the existing `leading-relaxed` and the user/browser text size are
   untouched. Overriding body text size happens only after an explicit step.
+- **Line-spacing semantics (resolved).** Font size always defers to the
+  browser/user's own setting until the reader steps it. Spacing's `normal` means
+  "no override", which keeps the page's **existing `leading-relaxed` (1.625)**;
+  `relaxed` applies an explicit `line-height: 2.0`. So `normal` is not the
+  browser's literal default leading but the page's own current leading — chosen
+  so the default appearance is byte-for-byte unchanged and only an explicit
+  change restyles the body.
 - **Body only.** Resolved values are applied as inline `font-size` /
   `line-height` on the elements that render the passage body (the passage
   `<p>`s), inside the `full-text` branch only. The citation header, actions,
@@ -114,11 +136,12 @@ Semantics:
   default the style binding is empty.
 - **Return to default.** `default` is the bottom font-size step, so stepping
   down from `large` reaches it; `stepFontSize` clamps (no wrap) at both ends.
-- **Persistence.** The component reads the key on mount, applies via
-  `parseReaderPrefs`, and writes via `serializeReaderPrefs` on change. A storage
-  failure (private mode/disabled) is a read-as-default / write-no-op, exactly
-  like recent searches, so the page never breaks. No network, no account, no
-  sync, no usage-log involvement.
+- **Persistence when storage is available.** The component reads the key on
+  mount, applies via `parseReaderPrefs`, and writes via `serializeReaderPrefs` on
+  change. When storage is unavailable (private mode/disabled), the pref still
+  works in memory for the session and a write is a no-op — a read falls back to
+  defaults and a write never throws, exactly like recent searches, so the page
+  never breaks. No network, no account, no sync, no usage-log involvement.
 - **Application timing.** Read and apply on mount (the page already loads its
   index client-side), so the default state renders first and the persisted
   preference is applied without an SSR mismatch.
@@ -126,9 +149,14 @@ Semantics:
 The control is an "Aa" toggle that opens a labeled group (`role="group"` with
 `aria-label="Reading settings"`): "Decrease text size" / "Increase text size"
 buttons, a line-spacing toggle with `aria-pressed`, a visible and announced
-current-step label (a polite live region), disabled end buttons as a non-color
-cue, and `aria-pressed`/state text so state is never color-only. Alternatives
-considered: a per-passage inline font-size (fragments state across paragraphs);
+current-step label (a polite live region), and `aria-pressed`/state text so state
+is never color-only. At the end steps the decrease/increase buttons are kept
+**focusable** and marked with `aria-disabled="true"` (plus the muted visual
+style) rather than the `disabled` attribute, so they are not removed from the tab
+order; the live-region step label announces the boundary state (e.g. "Smallest
+size" / "Largest size") so the end condition is conveyed without relying on color
+or on the element disappearing from the tab order. Alternatives considered: a
+per-passage inline font-size (fragments state across paragraphs);
 storing a single numeric scale (harder to clamp/default and to read in
 `localStorage`); CSS classes toggled on `<html>` (would style chrome too, and
 fights the theme class); `sessionStorage` (does not survive the next visit).
@@ -154,12 +182,22 @@ New pure, import-free module `src/lib/passage/tts.ts`:
 The component's thin adapter holds the `speechSynthesis` reference and
 playback state:
 
-- **Play** builds `buildSpeechText(chapterPassages.map(p => p.text))` for the
-  chapter view, or `buildSpeechText([passage.text])` for a single full-text
-  passage, chunks it, and `speak()`s the queue. **Pause** calls `pause()`;
-  **Play** while paused calls `resume()`. **Stop** and component destroy
-  (`onDestroy`, which fires on client navigation) call `cancel()`, so playback
-  stops when the page is left.
+- **Play** builds `buildSpeechText(...)` **only from the `full-text` branch's
+  rendered values** — `chapterPassages.map(p => p.text)` for the chapter view, or
+  `[passage.text]` for a single full-text passage — chunks it, and `speak()`s the
+  queue. **Pause** calls `pause()`; **Play** while paused calls `resume()`.
+  **Stop** calls `cancel()`.
+- **Stopping is not `onDestroy`-only.** `onDestroy` does **not** fire on
+  same-route navigation: chapter/passage nav links navigate within
+  `[sourceId]/[passageId]`, so SvelteKit reuses `+page.svelte` and only the
+  params change. Relying on `onDestroy` alone would let speech keep reading the
+  previous passage into the next one. Playback is therefore also stopped/reset
+  whenever the driving params change: in `loadPassage` (`~+page.svelte:96`), in
+  the reactive `$effect` that loads the passage (`~:81-84`), and in
+  `afterNavigate` (`~:91-94`). `onDestroy` keeps its `cancel()` as the last-resort
+  cleanup for a true unmount (leaving the route entirely); the param-change
+  stops cover within-route navigation, and both satisfy the spec scenario
+  "Playback stops when leaving the page".
 - **State is announced** with an `aria-live="polite"` status ("Listening" /
   "Paused" / "Stopped") and a pressed/toggle state on the control, plus a
   non-color label/icon change.
@@ -181,10 +219,20 @@ Both controls are placed inside the existing
 `{#if source.displayMode === 'full-text'}` region (the body and action rows
 already live there). The protected/`snippet`/`concordance-only` branch renders
 only "Full text not available" and the official-source link, so it has no
-control and no speech source. `canOfferListen(displayMode, supported)` mirrors
-the branch for the Listen control, and `buildSpeechText` is fed only from the
-same `chapterPassages` / `passage.text` values the full-text branch renders —
-never from the index at large and never from a protected source.
+control and no speech source.
+
+The speech source is gated by `displayMode` **explicitly**, not by the
+`chapterPassages` array. `chapterPassages` is populated by
+`src.copyright === 'public-domain'` (`~+page.svelte:116-122`), which is a
+*different* field from `displayMode`; today public-domain implies `full-text`,
+but the two must not be conflated. Therefore the Listen control is rendered only
+when `canOfferListen(source.displayMode, isTtsSupported(window))` is true, and
+the utterance text is built **only inside the `full-text` branch** from the same
+values that branch renders (`chapterPassages` / `passage.text`) — never from the
+index at large and never from a protected source. `test:tts` asserts this: the
+component source is scanned to confirm the Listen control and the
+`buildSpeechText` call appear only within a `displayMode === 'full-text'` region
+and that the call is guarded by `canOfferListen`.
 
 ### Posture on the existing URL-only persistence requirement
 
@@ -192,12 +240,18 @@ never from the index at large and never from a protected source.
 requirement makes the URL the only persistence for the **highlight/focus
 state**, and the guardrail requirement forbids accounts/bookmarks/notes. Reader
 preferences are a distinct concern (display comfort), stored under a namespaced,
-local-only key, and do not persist or alter the highlight/focus state, which
-remains URL-only. This delta therefore changes no existing requirement and adds
-no account/bookmark/note. Because this is the one place a reviewer could read
-the standing guardrail more strictly than intended, it is recorded in Open
-Questions for explicit confirmation (rather than silently modifying the
-requirement).
+device-local key, and never persist or alter the highlight/focus state, which
+remains URL-only; no account/bookmark/note is added.
+
+Because the guardrail requirement's `No persistence beyond the URL is introduced`
+scenario says flatly "no storage beyond the URL is used", this delta **does not
+leave that to implementation-time judgement**: it carries a `## MODIFIED
+Requirements` block for that requirement. The block reproduces the requirement
+text and both existing scenario headers verbatim, keeps every prohibition, and
+rewords only that scenario's THEN so the storage ban is scoped to the
+highlight/focus state and explicitly permits a single namespaced, device-local,
+never-transmitted display-preference key. There is no open question left here —
+the scoping decision is made in the artifact.
 
 ### Testing strategy
 
@@ -216,7 +270,11 @@ requirement).
     `undefined`/missing/spoofed; `canOfferListen` false for non-`full-text` even
     when supported; `buildSpeechText` trims/filters blanks and preserves order;
     `splitSpeechChunks` never exceeds `maxChars`, preserves content, and handles
-    an overlong unbroken run; a source scan asserting no network primitives.
+    an overlong unbroken run; a source scan asserting no network primitives; and
+    a component scan asserting the Listen control / `buildSpeechText` call is
+    gated on `canOfferListen(source.displayMode, …)` and lives inside the
+    `displayMode === 'full-text'` region (the explicit displayMode gate, not the
+    `copyright`-derived `chapterPassages`).
 - The applied visual sizes, persistence across reload, keyboard operation, and
   the actual audio play/pause/stop are `manual (browser)` — this repo has no
   headless browser. Graceful degradation is verified manually by removing the
@@ -226,14 +284,20 @@ requirement).
 ## Risks / Trade-offs
 
 - [Storing preferences locally could be read as conflicting with the standing
-  "URL is the only persistence" requirement] → the standing requirement is
-  scoped to highlight/focus state; preferences are separate, namespaced, and
-  local-only, and no standing requirement is modified. Flagged for reviewer
-  confirmation (Open Questions).
+  "URL is the only persistence" requirement] → resolved in the artifact: the
+  delta carries a `MODIFIED` copy of the guardrail requirement whose no-storage
+  scenario is scoped to the highlight/focus state (still URL-only) and explicitly
+  permits one namespaced, device-local, never-transmitted display-preference key.
+  No prohibition is dropped.
 - [`normal` line spacing maps to "no override", which keeps the page's existing
-  `leading-relaxed` (1.625), not the browser's literal default] → chosen so the
-  default appearance is byte-for-byte unchanged and only an explicit change
-  restyles the body; recorded for review.
+  `leading-relaxed` (1.625), not the browser's literal default] → decided in the
+  design (see "Line-spacing semantics (resolved)"): the default appearance is
+  byte-for-byte unchanged and only an explicit change restyles the body.
+- [`onDestroy` does not fire on same-route chapter/passage navigation, so
+  `cancel()` there would not stop speech when only the params change] → playback
+  is also stopped/reset on every driving-param change (`loadPassage` / the load
+  `$effect` / `afterNavigate`), so speech never continues into the next passage;
+  `onDestroy` remains the true-unmount cleanup.
 - [`speechSynthesis.pause()`/`resume()` is implemented inconsistently on some
   engines] → the design uses the standard API and, if a target browser ignores
   pause during implementation testing, falls back to `cancel()` +
@@ -261,14 +325,8 @@ feature is removed.
 
 ## Open Questions
 
-- **Reviewer confirmation (persistence guardrail):** does the standing
-  `passage-view` guardrail permit a namespaced, local-only reader-preference
-  key? This design assumes yes (it is display comfort, not the highlight/focus
-  state, and no account/bookmark/note is added) and keeps the delta ADDED-only.
-  If the team reads the guardrail as forbidding any `localStorage` on the
-  passage page, the equivalent change would instead be a `MODIFIED`
-  requirement carving preferences out — a spec-level decision to take before
-  implementation, not after.
-- **Reviewer confirmation (line-spacing naming):** confirm `normal` = "no
-  override, keep the page's existing leading" and `relaxed` = looser leading,
-  rather than redefining `normal` as the browser's literal default.
+- None. The persistence-scope question is resolved by the `MODIFIED` guardrail
+  requirement in this change (the storage ban is scoped to the highlight/focus
+  state; one namespaced display-preference key is explicitly permitted), and the
+  line-spacing semantics are resolved in the reader-preferences decision above
+  (`normal` = no override, keeping the page's existing `leading-relaxed`).

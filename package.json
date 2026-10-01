@@ -20,6 +20,8 @@
     "test:source-link": "node scripts/test-source-link.mjs",
     "test:url-state": "node scripts/test-url-state.mjs",
     "test:recent-searches": "node scripts/test-recent-searches.mjs",
+    "test:reader-prefs": "node scripts/test-reader-prefs.mjs",
+    "test:tts": "node scripts/test-tts.mjs",
     "test:result-label": "node scripts/test-result-label.mjs",
     "test:zero-result": "node scripts/test-zero-result.mjs",
     "test:report-prefill": "node scripts/test-report-prefill.mjs",

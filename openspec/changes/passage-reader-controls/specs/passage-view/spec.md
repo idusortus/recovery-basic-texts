@@ -8,11 +8,13 @@ On the passage page for a source whose `displayMode` is `full-text`, a labeled
 "reading settings" control SHALL let the reader adjust the passage **body** font
 size across a finite set of steps and toggle line spacing between normal and
 relaxed. The preferences SHALL affect only the passage body text, not the
-surrounding chrome (citation header, actions, match/navigation controls). The
-chosen preferences SHALL persist in local browser storage under a namespaced key;
-they SHALL require no account and SHALL NOT be transmitted or synced. When the
-reader has never changed the setting, the page SHALL NOT apply an explicit
-font-size override, so the browser/user's own text-size setting still applies.
+surrounding chrome (citation header, actions, match/navigation controls). When
+local browser storage is available, the chosen preferences SHALL persist under a
+namespaced key; they SHALL require no account and SHALL NOT be transmitted or
+synced. When storage is unavailable, the control SHALL still function in memory
+and SHALL NOT error. When the reader has never changed the setting, the page
+SHALL NOT apply an explicit font-size override, so the browser/user's own
+text-size setting still applies.
 The control SHALL be keyboard-operable; its controls SHALL be a labeled group
 with descriptive accessible names; the current state SHALL be conveyed by more
 than color alone; and a change SHALL be able to return to the default step. The
@@ -34,6 +36,11 @@ not `full-text` SHALL NOT offer the control.
 
 - **WHEN** the passage page is opened and the reader has never changed the setting
 - **THEN** the passage body carries no explicit font-size override, so the browser/user's own text-size setting applies
+
+#### Scenario: Returning to the default removes the override
+
+- **WHEN** the reader steps the font size back to the default step (or steps the spacing back to normal)
+- **THEN** the passage body no longer carries that explicit override and the default appearance is restored
 
 #### Scenario: A changed preference applies to the body and persists
 
@@ -67,7 +74,9 @@ SHALL offer a "Listen" control that reads the rendered passage text aloud using
 the browser's built-in speech-synthesis capability, with no external service,
 no network request, and no data leaving the device. The control SHALL play and
 pause playback; the playing/paused state SHALL be announced accessibly; and
-playback SHALL stop when the page is left (unmount or navigation). Listen SHALL
+playback SHALL stop when the page is left (unmount or navigation) and whenever
+the passage being viewed changes, including within-route chapter/passage
+navigation, so speech never continues into a different passage. Listen SHALL
 read only the passage text the page renders for a `full-text` source — never
 protected text and never hidden or non-rendered content. When the browser's
 speech-synthesis capability is unavailable, the page SHALL NOT present a working
@@ -93,8 +102,8 @@ scroll/focus, or match navigation. A source whose `displayMode` is not
 
 #### Scenario: Playback stops when leaving the page
 
-- **WHEN** the reader navigates away from (or unmounts) the passage page while it is speaking
-- **THEN** playback stops
+- **WHEN** the reader navigates away from (or unmounts) the passage page while it is speaking, or navigates within the route to a different passage/chapter
+- **THEN** playback stops and does not continue into the newly shown passage
 
 #### Scenario: Only rendered full-text passage content is read
 
@@ -115,3 +124,22 @@ scroll/focus, or match navigation. A source whose `displayMode` is not
 
 - **WHEN** a passage URL carrying a query with multiple matches is shown and Listen is used
 - **THEN** the existing match navigation and its focus/scroll behavior remain available and unchanged
+
+## MODIFIED Requirements
+
+### Requirement: Passage rendering stays within the MVP guardrails
+
+Passage rendering SHALL remain restricted to public-domain `full-text` sources. The change
+SHALL NOT render full text for any source whose `displayMode` is not `full-text`, SHALL NOT
+add authentication, user accounts, bookmarks, or notes, and SHALL NOT introduce non-AA
+literature or other fellowship content.
+
+#### Scenario: Non-full-text sources are still never shown in full
+
+- **WHEN** any passage page for a source whose `displayMode` is not `full-text` is viewed
+- **THEN** no full text is rendered and only the official-source link is offered
+
+#### Scenario: No persistence beyond the URL is introduced
+
+- **WHEN** a highlighted passage is viewed
+- **THEN** no account, bookmark, or note is created and no storage beyond the URL is used for the highlight/focus state; a single namespaced, device-local, never-transmitted display-preference key MAY be stored to remember the reader's font-size/spacing choice

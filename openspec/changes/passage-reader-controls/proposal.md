@@ -55,10 +55,16 @@ Non-goals:
 
 ### Modified Capabilities
 
-- `passage-view`: adds (as new `ADDED` requirements, altering no existing
-  requirement) reader preferences for the full-text passage body and a
-  text-to-speech "Listen" control, both gated to `full-text` sources and both
-  preserving the existing highlight/focus/match/copy behavior.
+- `passage-view`: adds reader preferences for the full-text passage body and a
+  text-to-speech "Listen" control as new `ADDED` requirements, both gated to
+  `full-text` sources. It also carries a `MODIFIED` copy of the standing
+  "Passage rendering stays within the MVP guardrails" requirement: every existing
+  prohibition is preserved and the "No persistence beyond the URL is introduced"
+  scenario is scoped so its storage ban covers the highlight/focus state while
+  explicitly permitting ONE namespaced, device-local, never-transmitted
+  display-preference key (the reader's font-size/spacing choice). The other new
+  requirements and both existing scenarios are otherwise unchanged, and the
+  highlight/focus/match/copy behavior is preserved.
 
 ## Impact
 

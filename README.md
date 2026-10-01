@@ -14,6 +14,7 @@ Live at: **basictexts.org**
 - Local recent searches — kept only in this browser (clearable, one-tap re-run), never transmitted
 - Back-to-search restoration: browser Back returns to the same query and approximately the same scroll position
 - Result cards show the passage page reference (`p.NN`) when the corpus has one, and label Copy truthfully ("Copy passage" vs "Copy excerpt")
+- Passage reader controls on full-text pages: an "Aa" reading-settings group (font size + line spacing, remembered locally) and a browser-only Listen (text-to-speech) control — no external service, no data sent
 - Installable PWA — works fully offline after first load
 - Shareable search and passage deep-links
 - Today's Daily Reflection on the home dashboard: a bounded concordance-only KWIC teaser that links out to aa.org, with a matching offline `/reflection` fallback
@@ -52,6 +53,8 @@ pnpm run test:install-prompt # PWA install prompt initialized exactly once
 pnpm run test:source-link  # non-full-text "read at official source" link template resolution
 pnpm run test:url-state    # shareable search URL (q / phrase / sources) serialize + parse
 pnpm run test:recent-searches # local recent-search list (add/dedupe/cap/parse/clear) + local-only guard
+pnpm run test:reader-prefs # passage reader display prefs (default = no override, steps, defensive parse)
+pnpm run test:tts          # Listen gating (full-text + supported) + speech-text/chunk assembly, no network
 pnpm run test:result-label # result-card page reference + Copy label by display mode
 pnpm run test:zero-result  # zero-result recovery suggestions (topics + one did-you-mean)
 pnpm run test:report-prefill # "report this passage" feedback prefill (no PII, no new fields)
@@ -85,6 +88,34 @@ renders the indexed entry for the date (or `?date=MM-DD`) instead, and reports
 is fetched or scraped from aa.org — it appears only as a navigation link/redirect.
 `test:reflection` guards the window bound, the never-full-text rule, the date
 resolver, and the no-aa.org-fetch contract.
+
+### Passage reader controls (full text)
+
+On a `full-text` passage page the reader gets two accessibility controls, and
+neither exists on a `snippet`/`concordance-only`/protected page:
+
+- **Reading settings ("Aa")** — a labeled, keyboard-operable group that steps the
+  passage **body** font size (default / large / larger / largest) and toggles
+  line spacing (normal / relaxed). At the default step no inline style is
+  applied, so the browser/user's own text size and the page's existing leading
+  win; the end buttons stay focusable and use `aria-disabled` rather than
+  `disabled`, and the current step is announced via a live region, so state is
+  never color-only. The choice persists in `localStorage` under the namespaced
+  key `basictexts-reader-prefs` (device-local, never transmitted or synced);
+  when storage is unavailable it still works in memory. Logic lives in the pure,
+  import-free `src/lib/passage/reader-prefs.ts` and is covered by
+  `test:reader-prefs`.
+- **Listen (text-to-speech)** — plays the rendered passage text through the
+  browser's built-in `speechSynthesis`, chunked into sentence-sized utterances;
+  play/pause/resume/stop with an announced state. It makes **no network
+  request** and reads only what the `full-text` branch renders. The control is
+  gated by `canOfferListen(source.displayMode, …)` (an explicit `displayMode`
+  check, not the `copyright`-derived `chapterPassages`) and is absent when the
+  API is unavailable, so nothing errors. Speech is cancelled on Stop, on a true
+  unmount, and whenever the driving params change — same-route chapter/passage
+  navigation changes only the params and does **not** fire `onDestroy`, so the
+  param-change stops prevent speech reading into the next passage. Logic lives in
+  the pure, import-free `src/lib/passage/tts.ts` and is covered by `test:tts`.
 
 ### Search normalization, ranking, and snippets
 
