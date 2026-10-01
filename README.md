@@ -11,6 +11,9 @@ Live at: **basictexts.org**
 - Full-text keyword and phrase search across multiple AA literature sources in one experience
 - KWIC (keyword-in-context) results with source labels, chapter/date references, and highlights
 - Search-box suggestions (prefix + did-you-mean) and synonym/concept grouping, all offline
+- Local recent searches — kept only in this browser (clearable, one-tap re-run), never transmitted
+- Back-to-search restoration: browser Back returns to the same query and approximately the same scroll position
+- Result cards show the passage page reference (`p.NN`) when the corpus has one, and label Copy truthfully ("Copy passage" vs "Copy excerpt")
 - Installable PWA — works fully offline after first load
 - Shareable search and passage deep-links
 - Today's Daily Reflection on the home dashboard: a bounded concordance-only KWIC teaser that links out to aa.org, with a matching offline `/reflection` fallback
@@ -48,6 +51,8 @@ pnpm run test:source-badge # filter-chip accent contrast (fill / label / badge r
 pnpm run test:install-prompt # PWA install prompt initialized exactly once
 pnpm run test:source-link  # non-full-text "read at official source" link template resolution
 pnpm run test:url-state    # shareable search URL (q / phrase / sources) serialize + parse
+pnpm run test:recent-searches # local recent-search list (add/dedupe/cap/parse/clear) + local-only guard
+pnpm run test:result-label # result-card page reference + Copy label by display mode
 pnpm run test:zero-result  # zero-result recovery suggestions (topics + one did-you-mean)
 pnpm run test:report-prefill # "report this passage" feedback prefill (no PII, no new fields)
 pnpm run test:reflection   # Daily Reflections teaser bound + offline fallback (no aa.org fetch)

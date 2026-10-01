@@ -12,6 +12,13 @@
 
 ---
 
+## 2026-10-01 — `search-qol-improvements` stays entirely in `search-ui`; recent searches are explicit-submit and local-only
+
+**Context:** Four independent search-surface improvements (recent searches, back-to-search scroll restoration, page reference on result cards, truthful Copy label) needed one OpenSpec change. Scroll restoration is a navigation concern, so `app-shell` was a candidate home for it; and recent searches introduce the app's first user-state store, which brushes against the no-accounts guardrail.
+**Choice:** All four requirements live in the existing `search-ui` capability as `## ADDED Requirements` only (nothing existing changes, so no `MODIFIED`/`REMOVED`). `app-shell` was rejected because it owns route-agnostic shell chrome (error page, nav overlay, toast live region, install-prompt init); the search results view's async index/results lifecycle is route-specific. Back-to-search keeps the query in the URL and adds a SvelteKit `snapshot` for the scroll offset, applied only after results render (SvelteKit's own history restore runs at `client.js` `scrollTo` before the async list exists, so it clamps to the short document). Recent searches are recorded only on explicit submit (Enter/topic/suggestion/recents activation), never on debounced typing, and are `localStorage`-only under a namespaced key; the list is never transmitted/logged/synced, while re-running a recent entry is an ordinary search submit logged anonymously per PRD §7.4. Logic goes in two new no-import pure modules (`src/lib/search/recent-searches.ts`, `src/lib/search/result-label.ts`) so dependency-free `test:*` scripts can import them directly.
+**Trade-offs:** `search-ui` grows to own both filter-chip presentation and result-card/recents behavior; acceptable for one surface. Explicit-submit-only recents means an as-you-type search is not recallable until submitted. Scroll restoration is "approximately" (a shorter re-render clamps) and `manual (browser)`-only because there is no headless browser.
+**Revisit:** If `search-ui` grows unwieldy, split a `recent-searches` capability; if users expect as-you-type queries in recents, revisit the record trigger; if SvelteKit changes history-scroll timing to run after async content, the snapshot workaround can be retired.
+
 ## 2026-09-30 — Public `/stats` removed rather than gated; install-prompt lifecycle lives in `app-shell`
 
 **Context:** The `ux-qol-improvements` batch had to mitigate a real exposure: `src/routes/stats/+page.svelte` + `functions/api/stats.ts` served every logged search query to anyone, unauthenticated. It also had to home a duplicate-`initInstallPrompt()` fix, but `pwa-icon`'s Purpose is strictly icon artwork, so that requirement did not belong there.
