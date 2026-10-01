@@ -281,10 +281,13 @@
 		if (!p || p.sourceId !== sid) { notFound = true; return; }
 
 		passage = p;
-		source = getSourceById(sid) ?? null;
+		// Keep the looked-up source in a local for the rest of the load: reading
+		// the `source` `$state` back inside the load `$effect` would add it as a
+		// dependency of the effect (see the chapter-local note below).
+		const src = getSourceById(sid) ?? null;
+		source = src;
 		notFound = false;
 
-		const src = source;
 		if (!src) return;
 
 		if (src.copyright === 'public-domain') {
@@ -293,10 +296,15 @@
 				.filter((q): q is Passage => (q as Passage).sourceId === sid)
 				.sort((a, b) => a.sequence - b.sequence);
 
-			chapterPassages = allSource.filter((q) => q.chapterRef === p.chapterRef);
+			// Read the chapter from this local, never back from `chapterPassages`:
+			// this runs inside the load `$effect`, so reading the `$state` after
+			// writing it would make the effect depend on its own output and loop
+			// (`effect_update_depth_exceeded`).
+			const chapter = allSource.filter((q) => q.chapterRef === p.chapterRef);
+			chapterPassages = chapter;
 
 			// Find the first passage of the previous chapter
-			const firstInChapter = chapterPassages[0];
+			const firstInChapter = chapter[0];
 			const prevCandidate = allSource
 				.filter((q) => q.chapterRef !== p.chapterRef && q.sequence < firstInChapter.sequence)
 				.at(-1);
@@ -308,7 +316,7 @@
 			}
 
 			// Find the first passage of the next chapter
-			const lastInChapter = chapterPassages.at(-1)!;
+			const lastInChapter = chapter.at(-1)!;
 			const nextCandidate = allSource.find(
 				(q) => q.chapterRef !== p.chapterRef && q.sequence > lastInChapter.sequence
 			);
