@@ -16,7 +16,11 @@
   },
   "$cliFive": {
     "blocks": [
-      "codegraph"
+      "codegraph",
+      "jev"
     ]
-  }
+  },
+  "plugins": [
+    ".opencode/plugin/jev-tier-router"
+  ]
 }

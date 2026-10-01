@@ -34,3 +34,13 @@ codegraph explore "<your question>"
 The CodeGraph MCP server is registered in the project config. Run `codegraph init` in this directory
 if the project has not been indexed yet.
 <!-- CODEGRAPH_END -->
+
+<!-- JEV_TIER_ROUTING_START -->
+## Tier routing
+
+Before planning, call the `tier_classifier` tool once with the task description.
+
+- If it returns `confidence` >= 0.6, use its `tier` (trivial | minor | major) as your planning depth.
+- If `confidence` < 0.6, or the tool is unavailable, use your own judgment and default to `major`.
+- The classifier is optional: it uses real Jev when a credential is available (Jev is free on OpenCode) and a local heuristic otherwise. Never block or fail a turn because the tool is unavailable.
+<!-- JEV_TIER_ROUTING_END -->
