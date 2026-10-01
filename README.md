@@ -75,6 +75,46 @@ contrast-carrying ring so it stays visible and legible on both selected and
 unselected chips in either theme. `test:source-badge` guards that contract,
 including the gold `Daily Reflections` accent.
 
+### Browser E2E tests (Playwright)
+
+Headless-browser tests live under `e2e/` and exercise the UI behaviors that the
+dependency-free `test:*` scripts cannot (recent searches, back-to-search scroll
+restoration, result-card page references and Copy labels, the passage reader
+controls, and the protected-source guardrails). They automate the **interactive
+subset** of the `manual (browser)` acceptance checks from the archived
+`search-qol-improvements` and `passage-reader-controls` changes.
+
+```bash
+npx playwright install chromium   # one-time: download the test browser
+pnpm run test:e2e                 # Chromium headless; starts a fresh `pnpm run dev`
+```
+
+Set `PLAYWRIGHT_PORT` to run the dev server and tests on a different port
+(default `5173`). `playwright.config.ts` runs one Chromium project and always
+starts a **fresh** dev server (`reuseExistingServer: false`); because the dev
+server runs with `--strictPort`, an occupied port fails loudly rather than
+silently reusing a server from another checkout. Artifacts are captured on
+failure only: `trace` on the first retry and `screenshot` `only-on-failure`. The
+suite is deterministic: `speechSynthesis` and the clipboard are mocked via
+`page.addInitScript`, it never depends on the current date, and the
+zero-network-request tests abort non-localhost requests so third-party assets
+(Google Analytics/Fonts) cannot leak into the measured window (aborted requests
+still raise `request` events, so an app-initiated external call is still
+detected).
+
+Residual **manual** gaps (not covered by the automated suite):
+
+- **Real audio output** — the Listen tests assert the play/pause/resume/stop and
+  speak/cancel contract against a mocked `speechSynthesis`; no audible sound is
+  produced or verified.
+- **Pixel-level visual/contrast review** — layout, focus-ring visibility, and
+  color contrast are checked by DOM/style assertions, not image diffs.
+- **OS clipboard integration** — Copy behavior is exercised against a mocked
+  `navigator.clipboard`; the actual system clipboard is not inspected.
+
+If `static/index/*` is missing or stale, run `pnpm run build:index` first so
+search returns real results.
+
 ### Daily Reflections (link-forward, protected)
 
 Daily Reflections is a protected, concordance-only source. Local display never

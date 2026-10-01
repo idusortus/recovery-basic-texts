@@ -44,6 +44,12 @@ static/index/
 .output/
 *.timestamp-*
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
 # OS / Editor / Cache
 .DS_Store
 Thumbs.db
