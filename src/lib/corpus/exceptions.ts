@@ -31,7 +31,7 @@ const exceptions: KnownException[] = [
 	{
 		match: ['promises', 'the promises'],
 		title: 'The Promises',
-		body: 'The Promises passage ("We are going to know a new freedom…") appears on pages 83–84 of the Big Book. Search for individual words from the passage ("freedom", "comprehend", or "intuitively") to find it.',
+		body: 'The Promises passage ("We are going to know a new freedom…") is now a named source, "The Promises and Step Prayers", drawn from the public-domain 2nd-edition Big Book (pp. 104-105). Search "promises" or open the source from the filter or the Sources page to read it in full.',
 		link: null
 	}
 ];
