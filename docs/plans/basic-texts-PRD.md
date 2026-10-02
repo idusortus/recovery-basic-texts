@@ -213,8 +213,15 @@ The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sour
 |---|---|---|---|---|---|
 | `big-book-2ed` | Alcoholics Anonymous (2nd Edition) | Big Book | Public domain (US) | `full-text` | portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf |
 | `twelve-steps-traditions` | Twelve Steps and Twelve Traditions | 12&12 | Needs verification — start as `snippet`, upgrade if PD confirmed | `snippet` | aa.org |
-| `twelve-traditions` | The Twelve Traditions | Traditions | Likely PD (same vintage as Steps) | `full-text` or `snippet` | aa.org |
+| `twelve-traditions` | The Twelve Traditions (Long Form) | Traditions | Public domain — derived from the 2nd-ed. Big Book back matter (pp. 189–192) | `full-text` | aa.org |
 | `daily-reflections` | Daily Reflections | DR | Protected © AAWS | `concordance-only` | aa.org/daily-reflections |
+| `twelve-steps` | The Twelve Steps | Twelve Steps | Public domain — derived from the 2nd-ed. Big Book (pp. 80–81) | `full-text` | portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf |
+| `twelve-concepts` | The Twelve Concepts for World Service | Twelve Concepts | Unknown — © 1962 AAWS (short form) / protected *A.A. Service Manual* (long form); **no reproduction basis recorded for the source text** | `full-text` (**source disabled**) | — |
+| `promises-and-prayers` | The Promises and Step Prayers | Promises & Prayers | Public domain — derived from the 2nd-ed. Big Book (pp. 83–84, 97, 104–105) | `full-text` | portlandeyeopener.com/AA-Big-Book-2nd-Edition.pdf |
+
+**Note on the reference texts (`twelve-steps`, `twelve-traditions`, `promises-and-prayers`):** Each reproduces public-domain text that already appears in `big-book-2ed`; the reference sources are labeled convenience collections and their descriptions record the Big Book provenance. Their passages are derived, verbatim, from `corpus/sources/big-book-2ed.json` by `corpus/scripts/extract-reference-texts.mjs`. The **Eleventh Step Prayer** is not public-domain Big Book text and is not part of `promises-and-prayers`; it remains reachable only through the existing `twelve-steps-traditions` (12&12) `snippet` source.
+
+**Note on `twelve-concepts`:** The Twelve Concepts short form on aa.org carries an explicit "© 1962 Alcoholics Anonymous World Services, Inc. All rights reserved" notice, and the long form is printed in the copyrighted *A.A. Service Manual*. No reproducible basis has been recorded, so the source ships **disabled** (`enabled: false`) and its text is neither rendered nor indexed. Per the registry rule, full text is never shown without a documented basis; there is no `snippet` fallback for this source. It appears on `/sources` as a card only.
 
 **Note on Daily Reflections linking:** The `linkTemplate` for `daily-reflections` is the static URL `https://www.aa.org/daily-reflections`. aa.org serves the current day's reflection server-side and does not expose a stable public URL for an arbitrary month/day, so DR results and the `/reflection` view always link to that single URL rather than a date-specific deep link.
 

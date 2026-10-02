@@ -566,15 +566,16 @@ await test('results are ordered by the shared relevance score, ties by sequence'
 
 await test('the strongest (adjacent) match ranks first within a source group', () => {
 	for (const group of concordancePath.search('self will')) {
-		assert.ok(group.results.length > 1, `${group.source.id} has results`);
-		const top = analyzePassage(group.results[0].passage.text, [], ['self', 'will']);
-		assert.equal(top.proximityWindow, 2, `${group.source.id}: top result is adjacent`);
-		const last = analyzePassage(
-			group.results[group.results.length - 1].passage.text,
-			[],
-			['self', 'will']
+		if (group.results.length < 2) continue; // ordering invariant needs ≥2 results in the group
+		const windows = group.results.map(
+			(r) => analyzePassage(r.passage.text, [], ['self', 'will']).proximityWindow
 		);
-		assert.ok(last.proximityWindow > 2, `${group.source.id}: weakest result is non-adjacent`);
+		if (!windows.some((w) => w === 2)) continue; // no adjacent match in this (small) source group
+		assert.equal(windows[0], 2, `${group.source.id}: top result is adjacent`);
+		assert.ok(
+			windows[windows.length - 1] > 2,
+			`${group.source.id}: weakest result is non-adjacent`
+		);
 	}
 });
 

@@ -274,10 +274,14 @@ corpus/                     — source data (source of truth)
   sources/
     big-book-2ed.json       — Big Book 2nd edition passages (public domain)
     twelve-steps-traditions.json
+    twelve-steps.json       — the Twelve Steps, derived from the 2nd-ed. Big Book (public domain)
+    twelve-traditions.json  — the long-form Twelve Traditions, derived from the 2nd-ed. Big Book (public domain)
+    promises-and-prayers.json — the Ninth Step Promises + Third/Seventh Step prayers, derived from the 2nd-ed. Big Book (public domain)
     daily-reflections.json
   known-exceptions.json     — curated hints for common search terms not in corpus
   scripts/
     build-index.mjs         — prebuilds the search index
+    extract-reference-texts.mjs — derives the reference-text corpus files from the Big Book
     validate.js             — corpus schema validation
     test-ingest-headers.py  — Stage 3 running-header stripping test
   CORPUS-GUIDE.md           — authoritative guide for sourcing and ingesting corpus

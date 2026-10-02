@@ -90,13 +90,68 @@ Use `snippet` mode (30-word excerpts) and link to:
 
 ---
 
-### Source 2 — The Twelve Traditions (standalone)
+### Source 2 — The Twelve Traditions (long form, standalone)
 **Registry ID:** `twelve-traditions`
-**Display mode:** `full-text` (likely) — verify same as 12&12
-**Copyright status:** 🔍 NEEDS VERIFICATION — likely public domain
+**Display mode:** `full-text`
+**Copyright status:** ✅ Public domain (U.S.) — derived from the public-domain 2nd-edition Big Book (copyright lapsed 1983)
 
-#### Notes
-It is readily available online.
+#### Basis
+The long form of the Twelve Traditions is printed in the back matter of the 2nd-edition Big Book (*Alcoholics Anonymous*, 1955), in the appendix "The Twelve Traditions (The Long Form)", on pages 189–192 / corpus `pageRef` `p.189`–`p.192` (passages `big-book-2ed-appendices-p0254`–`...-p0258`). The 2nd edition is confirmed public domain in the U.S. because AAWS did not renew its copyright (lapsed 1983); see the Part 2 determination and the `big-book-2ed` source above. The Twelve Traditions long form was first published in the April/May 1946 issue of the AA Grapevine and adopted by the fellowship in 1950; the wording reproduced here is the 2nd-edition Big Book's own printing.
+
+The short form is also in the Big Book appendix at `big-book-2ed-appendices-p0253` (`p.187`) and is deliberately **left in the Big Book source**, not duplicated here; this source carries the long form only.
+
+#### Provenance / overlap
+Every passage in `corpus/sources/twelve-traditions.json` is derived, byte-for-byte, from the Big Book corpus passages above: the same long-form text also appears in the `big-book-2ed` source. This is a labeled convenience collection, not a de-duplicated one.
+
+---
+
+### Source 2b — The Twelve Steps (standalone)
+**Registry ID:** `twelve-steps`
+**Display mode:** `full-text`
+**Copyright status:** ✅ Public domain (U.S.) — derived from the public-domain 2nd-edition Big Book (copyright lapsed 1983)
+
+#### Basis
+The Twelve Steps as printed in the 2nd-edition Big Book (*Alcoholics Anonymous*, 1955), in Chapter 5 "How It Works", on pages 80–81 / corpus `pageRef` `p.80`–`p.81` (passages `big-book-2ed-chapter-5-how-it-works-p0106`–`...-p0107`). Same public-domain basis as `big-book-2ed` above (copyright lapsed 1983).
+
+#### Provenance / overlap
+Every passage in `corpus/sources/twelve-steps.json` is derived, byte-for-byte, from the Big Book corpus passages above; the same Twelve Steps text also appears in the `big-book-2ed` source.
+
+---
+
+### Source 2c — The Promises and Step Prayers
+**Registry ID:** `promises-and-prayers`
+**Display mode:** `full-text`
+**Copyright status:** ✅ Public domain (U.S.) — derived from the public-domain 2nd-edition Big Book (copyright lapsed 1983)
+
+#### Basis
+All passages are derived from the 2nd-edition Big Book (*Alcoholics Anonymous*, 1955):
+- **The Ninth Step Promises** — Chapter 6 "Into Action", pages 104–105 / corpus `pageRef` `p.104`–`p.105` (passages `big-book-2ed-chapter-6-into-action-p0144`–`...-p0145`).
+- **The Third Step Prayer** — Chapter 5 "How It Works", page 84 / corpus `pageRef` `p.84` (passage `big-book-2ed-chapter-5-how-it-works-p0112`).
+- **The Seventh Step Prayer** — Chapter 6 "Into Action", page 97 / corpus `pageRef` `p.97` (passage `big-book-2ed-chapter-6-into-action-p0131`).
+
+Same public-domain basis as `big-book-2ed` above (copyright lapsed 1983).
+
+**Deliberately excluded:** the **Eleventh Step Prayer** (the "channel of thy peace" / St. Francis prayer) is **not** public-domain Big Book text — it is copyrighted 12&12 material and stays reachable only through the existing `twelve-steps-traditions` (12&12) `snippet` source. It is not reproduced here.
+
+#### Provenance / overlap
+Every passage in `corpus/sources/promises-and-prayers.json` is a contiguous substring of its Big Book source passage above; the same text also appears in the `big-book-2ed` source.
+
+---
+
+### Source 2d — The Twelve Concepts for World Service (disabled)
+**Registry ID:** `twelve-concepts`
+**Display mode:** `full-text` (intended mode at enablement — **no `snippet` fallback**)
+**Copyright status:** ⚠️ **Not established as public domain — source ships `enabled: false`**
+
+#### Finding
+The Twelve Concepts for World Service short form published on aa.org carries an explicit **"© 1962 Alcoholics Anonymous World Services, Inc. All rights reserved"** notice, and the long form is printed in the copyrighted *A.A. Service Manual*. Neither is reproduced in the 2nd-edition Big Book, so the Big Book public-domain determination does **not** apply.
+- **Copyright is not verified public domain.**
+- **No reproducible basis (documented permission, or a verified non-renewed publication) has been recorded**, so `twelve-concepts` stays disabled and no text from it is rendered or served, in `full-text` or in any `snippet`/`concordance` form.
+
+There is **no `snippet` fallback** for this source: because the short form is explicitly copyright-noticed and the long form is in a protected service manual, shipping a `snippet`/`concordance-only` rendering would still reproduce protected text without a recorded basis. The source is therefore either **disabled** (current state, per this finding) or **enabled as `full-text`** only once a documented basis is written here and mirrored in the registry `copyright` field. This follows the Part 1 rule: never change a source to `full-text` without confirming the copyright basis in writing.
+
+#### Registry state
+Registered with `enabled: false`, `displayMode: "full-text"`, `copyright: "unknown"`, `sortOrder: 6`, and a description pointing at this copyright review. A disabled source needs no corpus file; validation accepts the missing `corpus/sources/twelve-concepts.json`.
 
 ---
 
@@ -350,9 +405,14 @@ The `edition` field is **required** whenever a `<source-id>.pagemap.json` file e
 `sortOrder` controls the grouping order in search results. Current assignments:
 - 1 — Big Book (2nd Edition)
 - 2 — 12&12
-- 3 — 12 Traditions (disabled until ingested)
+- 3 — Twelve Traditions (long form; public domain, derived from the 2nd-ed. Big Book back matter, `p.189`–`p.192`)
 - 4 — Daily Reflections
+- 5 — Twelve Steps (public domain, derived from the 2nd-ed. Big Book, `p.80`–`p.81`)
+- 6 — Twelve Concepts (registered **disabled**: © 1962 AAWS, no reproduction basis recorded, no `snippet` fallback)
+- 7 — Promises and Prayers (public domain, derived from the 2nd-ed. Big Book)
 - 10+ — future sources (leaves room to insert between existing ones)
+
+The reference texts use 3, 5, 6, and 7 (rather than 10+) so they group next to the Big Book and 12&12 they are drawn from. `twelve-concepts` keeps slot 6 reserved even while disabled, so enabling it later does not renumber the others.
 
 ### Step 6.5 — Pagemap and citation verification (optional, strongly recommended)
 
@@ -537,6 +597,9 @@ These are candidates for v2+. Each needs its own copyright research.
   sources/
     big-book-2ed.json                   ← structured passage array (ingest.py output)
     twelve-steps-traditions.json        ← structured passage array (ingest.py output)
+    twelve-steps.json                   ← Twelve Steps, derived from big-book-2ed (extract-reference-texts.mjs)
+    twelve-traditions.json              ← long-form Twelve Traditions, derived from big-book-2ed
+    promises-and-prayers.json           ← Ninth Step Promises + Third/Seventh Step prayers, derived from big-book-2ed
     daily-reflections.json              ← structured passage array (parse_daily_reflections.py output)
   raw/
     BigBookSecondEdition.pdf            ← raw PDF, committed as-is
@@ -551,6 +614,7 @@ These are candidates for v2+. Each needs its own copyright research.
     parse_daily_reflections.py          ← DR-specific ingestion (date/linkData schema)
     scan_raw_sources.py                 ← audits raw/ against the registry
     build-index.mjs                     ← builds MiniSearch index from corpus/ sources
+    extract-reference-texts.mjs         ← derives the reference-text corpus files from big-book-2ed.json
     validate.js                         ← schema + integrity validation
   pipeline-artifacts/
     <source-id>/
