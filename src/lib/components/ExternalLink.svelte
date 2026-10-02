@@ -18,7 +18,7 @@
 		if (!$online) {
 			e.preventDefault();
 			showToast(
-				"You're offline — this link needs an internet connection.",
+				"You're offline. This link needs an internet connection.",
 				'warning'
 			);
 		}

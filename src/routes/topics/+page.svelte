@@ -24,7 +24,7 @@
 </script>
 
 <svelte:head>
-	<title>Browse AA recovery topics — step work, fear, gratitude, humility, and more</title>
+	<title>Browse AA recovery topics | step work, fear, gratitude, humility, and more</title>
 	<meta
 		name="description"
 		content="Browse recovery and step work topics in AA literature, from acceptance and resentment to fear, gratitude, humility, and honesty."

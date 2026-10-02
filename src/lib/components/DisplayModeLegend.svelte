@@ -36,15 +36,15 @@
 		<div class="flex items-start justify-between gap-3">
 			<ul class="text-xs text-stone-500 dark:text-slate-400 space-y-1">
 				<li>
-					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Full-Text</span> — the
+					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Full-Text</span>: the
 					complete passage is shown here (public-domain sources).
 				</li>
 				<li>
-					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Snippet</span> — a short
+					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Snippet</span>: a short
 					excerpt; open the official source to read the rest.
 				</li>
 				<li>
-					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Concordance</span> — a
+					<span class="font-semibold text-[#1A1A1A] dark:text-slate-200">Concordance</span>: a
 					keyword-in-context window; open the official source to read the full text.
 				</li>
 			</ul>

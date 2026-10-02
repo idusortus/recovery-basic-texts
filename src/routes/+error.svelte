@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>{isNotFound ? 'Page not found' : 'Something went wrong'} — basictexts.org</title>
+	<title>{isNotFound ? 'Page not found' : 'Something went wrong'} | basictexts.org</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

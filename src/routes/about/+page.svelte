@@ -1,9 +1,13 @@
 <script lang="ts">
 	import ExternalLink from '$lib/components/ExternalLink.svelte';
+
+	// Guarded by the `hide-support-project-info` change and the `about-page` spec:
+	// support is not solicited, so the reserved section stays in source but unrendered.
+	const SHOW_SUPPORT = false;
 </script>
 
 <svelte:head>
-	<title>About basictexts.org — AA recovery and step work search</title>
+	<title>About basictexts.org | AA recovery and step work search</title>
 	<meta
 		name="description"
 		content="Learn how basictexts.org helps people search AA literature for recovery, step work, sobriety, and daily reflection themes."
@@ -31,7 +35,7 @@
 				with surrounding context, and navigate to official or free online sources.
 			</p>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed mt-3">
-				It's designed to work offline as an installable Progressive Web App — useful at meetings,
+				It's designed to work offline as an installable Progressive Web App, useful at meetings,
 				during step work, or anywhere you want to find a passage quickly.
 			</p>
 		</section>
@@ -46,7 +50,7 @@
 			</h2>
 			<ul class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed space-y-1 list-disc list-inside">
 				<li>Not affiliated with or endorsed by Alcoholics Anonymous World Services (AAWS) or AA Grapevine</li>
-				<li>Not a replacement for the books themselves — please buy and read them</li>
+				<li>Not a replacement for the books themselves; please buy and read them</li>
 				<li>Not a treatment resource or professional service</li>
 				<li>Not associated with any AA group, intergroup, or service body</li>
 			</ul>
@@ -83,7 +87,7 @@
 			</h2>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed">
 				The 2nd-edition Big Book (1955) is in the public domain in the United States because
-				AAWS did not renew its copyright — a matter of settled public record, confirmed by the
+				AAWS did not renew its copyright, a matter of settled public record, confirmed by the
 				U.S. Copyright Office renewal records. The 1st-edition Big Book (1939) is similarly
 				public domain for the same reason.
 			</p>
@@ -103,7 +107,7 @@
 				Privacy
 			</h2>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed">
-				Anonymous search terms are recorded to help improve the app — specifically, to identify
+				Anonymous search terms are recorded to help improve the app, specifically to identify
 				passages people search for that aren't yet in the corpus. No personal data, IP addresses,
 				cookies, or identifiers are collected or stored. The log records only the search query,
 				result count, and a server-side timestamp.
@@ -119,7 +123,7 @@
 				Open source
 			</h2>
 			<p class="text-stone-600 dark:text-slate-400 text-sm leading-relaxed">
-				basictexts.org is open source (MIT License). Contributions are welcome — especially
+				basictexts.org is open source (MIT License). Contributions are welcome, especially
 				new corpus sources and data corrections.
 			</p>
 			<ExternalLink
@@ -176,7 +180,7 @@
 			<p class="text-stone-500 dark:text-slate-400 text-sm leading-relaxed mb-3">
 				Found a bug, or have an idea for an improvement? Send it straight to the maintainer's
 				GitHub tracker. No account or sign-in is needed, and we don't ask for personal
-				details. Your IP address isn't stored or logged — it's used briefly to rate-limit
+				details. Your IP address isn't stored or logged; it's used briefly to rate-limit
 				abuse and sent to Cloudflare only to verify the challenge.
 			</p>
 			<a
@@ -188,40 +192,42 @@
 			</a>
 		</section>
 
-		<!-- Support (reserved) -->
-		<section
-			aria-labelledby="support"
-			class="rounded border border-stone-200 dark:border-slate-700 px-5 py-4"
-		>
-			<h2
-				id="support"
-				class="font-serif text-lg font-semibold text-navy dark:text-slate-200 mb-2"
+		{#if SHOW_SUPPORT}
+			<!-- Support (reserved) -->
+			<section
+				aria-labelledby="support"
+				class="rounded border border-stone-200 dark:border-slate-700 px-5 py-4"
 			>
-				Support this project
-			</h2>
-			<p class="text-stone-500 dark:text-slate-400 text-sm leading-relaxed mb-3">
-				basictexts.org is free and always will be. If it's been useful to you, consider supporting
-				it — it helps cover hosting costs and motivates continued development.
-			</p>
-			<div class="flex flex-wrap gap-3">
-				<ExternalLink
-					href="https://ko-fi.com/wiscodev"
-					class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
-						   bg-navy text-white hover:bg-navy/90 transition-colors"
+				<h2
+					id="support"
+					class="font-serif text-lg font-semibold text-navy dark:text-slate-200 mb-2"
 				>
-					Support on Ko-fi
-				</ExternalLink>
-				<!-- GitHub Sponsors placeholder -->
-				<span
-					class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
-						   bg-stone-100 dark:bg-slate-800 text-stone-400 dark:text-slate-500
-						   border border-stone-200 dark:border-slate-700 cursor-not-allowed"
-					title="GitHub Sponsors link coming soon"
-				>
-					GitHub Sponsors (coming soon)
-				</span>
-			</div>
-		</section>
+					Support this project
+				</h2>
+				<p class="text-stone-500 dark:text-slate-400 text-sm leading-relaxed mb-3">
+					basictexts.org is free and always will be. If it's been useful to you, consider supporting
+					it — it helps cover hosting costs and motivates continued development.
+				</p>
+				<div class="flex flex-wrap gap-3">
+					<ExternalLink
+						href="https://ko-fi.com/wiscodev"
+						class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
+							   bg-navy text-white hover:bg-navy/90 transition-colors"
+					>
+						Support on Ko-fi
+					</ExternalLink>
+					<!-- GitHub Sponsors placeholder -->
+					<span
+						class="inline-flex items-center px-4 py-2 rounded text-sm font-medium
+							   bg-stone-100 dark:bg-slate-800 text-stone-400 dark:text-slate-500
+							   border border-stone-200 dark:border-slate-700 cursor-not-allowed"
+						title="GitHub Sponsors link coming soon"
+					>
+						GitHub Sponsors (coming soon)
+					</span>
+				</div>
+			</section>
+		{/if}
 
 	</div>
 </main>

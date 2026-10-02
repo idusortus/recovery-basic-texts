@@ -40,7 +40,7 @@
 </script>
 
 <svelte:head>
-	<title>Daily Reflections — basictexts</title>
+	<title>Daily Reflections | basictexts</title>
 	{#if $online}
 		<!-- Fallback for environments where JS is slow or disabled -->
 		<meta http-equiv="refresh" content="0; url=https://www.aa.org/daily-reflections" />
@@ -80,7 +80,7 @@
 			<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed mb-4">{@html fallback.teaser}</p>
 			<div class="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-slate-800">
 				<span class="text-xs text-stone-400 dark:text-slate-500">
-					Offline — showing the indexed concordance entry.
+					Offline: showing the indexed concordance entry.
 				</span>
 				<ExternalLink
 					href={OFFICIAL_URL}

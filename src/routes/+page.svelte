@@ -412,7 +412,7 @@
 			showToast('Passage copied to clipboard.', 'info', 2500);
 			confirmInPlace(`copy:${key}`, 'Copied ✓');
 		} catch {
-			showToast('Could not copy — please select and copy manually.', 'warning');
+			showToast('Could not copy. Please select and copy manually.', 'warning');
 		}
 	}
 
@@ -431,7 +431,7 @@
 			// AbortError is the user dismissing the native share sheet; anything
 			// else is a real failure and must be surfaced, never shown as success.
 			if (err instanceof Error && err.name === 'AbortError') return;
-			showToast('Could not share — please copy the address manually.', 'warning');
+			showToast('Could not share. Please copy the address manually.', 'warning');
 		}
 	}
 
@@ -455,7 +455,7 @@
 		total: number
 	): string {
 		const chapter = passage.chapterRef ?? passage.title;
-		return `Result ${index + 1} of ${total}: ${source.shortTitle} — ${chapter}`;
+		return `Result ${index + 1} of ${total}: ${source.shortTitle}, ${chapter}`;
 	}
 
 	// Bounded concordance-only KWIC window for the date's indexed entry —
@@ -474,7 +474,7 @@
 </script>
 
 <svelte:head>
-	<title>basictexts.org — AA recovery search and step work concordance</title>
+	<title>basictexts.org | AA recovery search and step work concordance</title>
 	<meta
 		name="description"
 		content="Search AA recovery passages, step work themes, sobriety reflections, and daily readings across the Big Book, 12 Steps, 12 Traditions, and more."
@@ -714,8 +714,8 @@
 				}}
 				aria-pressed={phraseMode}
 				aria-label={phraseMode
-					? 'Exact phrase mode on — click to switch to word match'
-					: 'Word match mode — click to search exact phrase'}
+					? 'Exact phrase mode on. Click to switch to word match'
+					: 'Word match mode. Click to search exact phrase'}
 				class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
 					   border transition-colors duration-150 ml-auto
 					   {phraseMode
@@ -1138,7 +1138,7 @@
 										<p
 											class="text-xs text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5"
 										>
-											<span aria-hidden="true">~</span> Similar result — matched via a related term
+											<span aria-hidden="true">~</span> Similar result · matched via a related term
 										</p>
 									{/if}
 									<div class="flex items-baseline gap-2 mb-2">
@@ -1146,14 +1146,14 @@
 											{#if group.source.edition?.edition}
 												{group.source.shortTitle}, {group.source.edition.edition.toUpperCase()} ED.
 												{#if result.passage.chapterRef}
-													— {result.passage.chapterRef.toUpperCase()}
+													· {result.passage.chapterRef.toUpperCase()}
 												{/if}
 											{:else}
 												{group.source.shortTitle.toUpperCase()}
 												{#if result.passage.chapterRef}
-													— {result.passage.chapterRef.toUpperCase()}
+													· {result.passage.chapterRef.toUpperCase()}
 												{:else}
-													— {result.passage.title.toUpperCase()}
+													· {result.passage.title.toUpperCase()}
 												{/if}
 											{/if}
 										</h3>
@@ -1200,7 +1200,7 @@
 										{/if}
 										<a
 											href={reportHref(result.passage.sourceId, result.passage.id, debouncedQuery)}
-											aria-label={`Report this passage: ${group.source.shortTitle} — ${result.passage.chapterRef ?? result.passage.title}`}
+											aria-label={`Report this passage: ${group.source.shortTitle}, ${result.passage.chapterRef ?? result.passage.title}`}
 											class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300 transition-colors"
 										>
 											Report

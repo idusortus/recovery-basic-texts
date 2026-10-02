@@ -60,7 +60,7 @@
 </script>
 
 <svelte:head>
-	<title>Send feedback — basictexts.org</title>
+	<title>Send feedback | basictexts.org</title>
 	<meta
 		name="description"
 		content="Report a bug or suggest an improvement to basictexts.org. No account needed."
@@ -86,7 +86,7 @@
 				{message}
 			</p>
 			<p class="text-emerald-800 dark:text-emerald-400 text-sm">
-				Thank you — your report went straight to the maintainer's GitHub tracker.
+				Thank you. Your report went straight to the maintainer's GitHub tracker.
 			</p>
 			<a
 				href="/"
@@ -232,7 +232,7 @@
 						   dark:focus-visible:ring-amber-400 transition-colors duration-200"
 				></textarea>
 				<p id="details-help" class="mt-1 text-xs text-stone-500 dark:text-slate-400">
-					Up to 4000 characters. Please don't include personal details — no names, addresses,
+					Up to 4000 characters. Please don't include personal details, no names, addresses,
 					phone numbers, or anything identifying you.
 				</p>
 			</div>
@@ -257,7 +257,7 @@
 		<p class="mt-4 text-xs text-stone-500 dark:text-slate-400 leading-relaxed">
 			Reports are filed publicly as GitHub issues using only the text above plus a timestamp
 			and app version. We don't ask for or collect your name, email address, or account.
-			We don't store or log your IP address — it's used transiently to rate-limit abuse and
+			We don't store or log your IP address; it's used transiently to rate-limit abuse and
 			sent to Cloudflare only to verify the challenge.
 		</p>
 	{/if}

@@ -132,7 +132,7 @@
 					   	: 'text-amber-600 dark:text-amber-400'}"
 				role="status"
 				aria-label={$online ? 'Online' : 'Offline'}
-				title={$online ? 'Connected' : 'Offline — search still works'}
+				title={$online ? 'Connected' : 'Offline: search still works'}
 			>
 				{#if $online}
 					<Wifi size={14} aria-hidden={true} />
@@ -222,7 +222,7 @@
 						<span>Online</span>
 					{:else}
 						<WifiOff size={14} aria-hidden={true} class="animate-pulse" />
-						<span>Offline — search still works</span>
+						<span>Offline: search still works</span>
 					{/if}
 				</div>
 			</div>

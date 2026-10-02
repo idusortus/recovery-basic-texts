@@ -11,8 +11,8 @@
 
 	const DISPLAY_MODE_LABELS: Record<string, string> = {
 		'full-text': 'Full text shown',
-		'concordance-only': 'Concordance only — links to official source',
-		snippet: 'Short excerpts — links to official source'
+		'concordance-only': 'Concordance only, links to official source',
+		snippet: 'Short excerpts, links to official source'
 	};
 
 	// The Big Book free resource mirrors the registry so the link cannot drift
@@ -34,7 +34,7 @@
 </script>
 
 <svelte:head>
-	<title>AA sources indexed by basictexts.org — Big Book, 12 Steps, Daily Reflections</title>
+	<title>AA sources indexed by basictexts.org | Big Book, 12 Steps, Daily Reflections</title>
 	<meta
 		name="description"
 		content="Browse the AA literature sources indexed by basictexts.org, including the Big Book, 12 Steps, 12 Traditions, and Daily Reflections."

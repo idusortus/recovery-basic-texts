@@ -59,6 +59,7 @@ pnpm run test:result-label # result-card page reference + Copy label by display 
 pnpm run test:zero-result  # zero-result recovery suggestions (topics + one did-you-mean)
 pnpm run test:report-prefill # "report this passage" feedback prefill (no PII, no new fields)
 pnpm run test:reflection   # Daily Reflections teaser bound + offline fallback (no aa.org fetch)
+pnpm run test:ui-copy      # app-authored visible copy contains no em dash (U+2014)
 pnpm run test:ingest       # ingest Stage 3 running-header stripping (python3)
 ```
 
@@ -74,6 +75,13 @@ contrast-selected from the source accent, and each per-source badge keeps a
 contrast-carrying ring so it stays visible and legible on both selected and
 unselected chips in either theme. `test:source-badge` guards that contract,
 including the gold `Daily Reflections` accent.
+
+App-authored copy shown to visitors must not contain an em dash (U+2014).
+`test:ui-copy` asserts the copied-citation helper (`buildCitation` in
+`src/lib/search/kwic.ts`) uses a plain lead-in, then scans `src/**/*.{svelte,ts,js}`
+for U+2014 after stripping every comment form (HTML, line, block, JSDoc), allowing
+only the corpus-matching data literal in `src/lib/search/index.ts`. Corpus text,
+comments, and the reserved (unrendered) support section are out of scope.
 
 ### Browser E2E tests (Playwright)
 

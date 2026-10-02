@@ -399,13 +399,13 @@
 		matches[next].scrollIntoView({ block: 'center' });
 	}
 
-	/** Format the citation header: "SOURCE, Xth ED. — CHAPTER NAME" (all uppercase). */
+	/** Format the citation header: "SOURCE, Xth ED.: CHAPTER NAME" (all uppercase). */
 	function formatCitationHeader(src: Source, p: Passage): string {
 		const sourceLabel = src.edition?.edition
 			? `${src.shortTitle.toUpperCase()}, ${src.edition.edition.toUpperCase()} ED.`
 			: src.shortTitle.toUpperCase();
 		const chapterLabel = (p.chapterRef ?? p.title).toUpperCase();
-		return `${sourceLabel} — ${chapterLabel}`;
+		return `${sourceLabel}: ${chapterLabel}`;
 	}
 
 	// ─── Actions ─────────────────────────────────────────────────────────────────
@@ -417,13 +417,13 @@
 			: passage.text;
 		const parts = [source.title];
 		if (passage.chapterRef) parts.push(passage.chapterRef);
-		const citation = `${textToCopy}\n\n— ${parts.join(', ')}`;
+		const citation = `${textToCopy}\n\nFrom ${parts.join(', ')}`;
 		try {
 			await navigator.clipboard.writeText(citation);
 			showToast('Passage copied to clipboard.', 'info', 2500);
 			confirmPassageInPlace('copy', 'Copied ✓');
 		} catch {
-			showToast('Could not copy — please select and copy manually.', 'warning');
+			showToast('Could not copy. Please select and copy manually.', 'warning');
 		}
 	}
 
@@ -442,7 +442,7 @@
 			// AbortError is the user dismissing the native share sheet; anything
 			// else is a real failure and must be surfaced, never shown as success.
 			if (err instanceof Error && err.name === 'AbortError') return;
-			showToast('Could not share — please copy the address manually.', 'warning');
+			showToast('Could not share. Please copy the address manually.', 'warning');
 		}
 	}
 
@@ -456,7 +456,7 @@
 
 <svelte:head>
 	<title>
-		{passage ? `${passage.title} — basictexts.org` : 'Passage — basictexts.org'}
+		{passage ? `${passage.title} | basictexts.org` : 'Passage | basictexts.org'}
 	</title>
 </svelte:head>
 
@@ -551,7 +551,7 @@
 						   dark:border-slate-800 px-6 py-6 mb-6"
 				>
 					<p class="text-stone-500 dark:text-slate-400 text-sm leading-relaxed italic mb-4">
-						Full text not available — {source.title} is a copyright-protected work.
+						Full text not available. {source.title} is a copyright-protected work.
 					</p>
 					{#if source.officialUrl}
 						<ExternalLink

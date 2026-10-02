@@ -516,7 +516,7 @@ export function buildFullKwic(text: string, query: string): string {
 
 /**
  * Build a plain-text citation string for clipboard copy.
- * Format: "Text excerpt — Source Title, Chapter (p.X)"
+ * Format: "Text excerpt\n\nFrom Source Title, Chapter (p.X)"
  */
 export function buildCitation(
 	text: string,
@@ -527,5 +527,5 @@ export function buildCitation(
 	const parts: string[] = [sourceTitle];
 	if (chapterRef) parts.push(chapterRef);
 	if (pageRef) parts.push(`p.${pageRef.replace(/^p\.?/, '')}`);
-	return `${text}\n\n— ${parts.join(', ')}`;
+	return `${text}\n\nFrom ${parts.join(', ')}`;
 }

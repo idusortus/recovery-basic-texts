@@ -131,7 +131,7 @@
 	$effect(() => {
 		if ($indexVersionStore.updateAvailable) {
 			showToast(
-				'Updated library available — refresh to load the latest content.',
+				'Updated library available. Refresh to load the latest content.',
 				'info',
 				10000
 			);
@@ -166,7 +166,7 @@
 </script>
 
 <svelte:head>
-	<title>basictexts.org — AA recovery search and step work concordance</title>
+	<title>basictexts.org | AA recovery search and step work concordance</title>
 	<meta
 		name="description"
 		content="Search Alcoholics Anonymous literature for recovery, step work, sobriety, and daily reflections with a free, offline-friendly concordance."
@@ -178,7 +178,7 @@
 	<meta name="robots" content="index,follow,max-image-preview:large" />
 	<link rel="canonical" href={canonicalUrl} />
 	<meta property="og:type" content="website" />
-	<meta property="og:title" content="basictexts.org — AA recovery search and step work concordance" />
+	<meta property="og:title" content="basictexts.org | AA recovery search and step work concordance" />
 	<meta
 		property="og:description"
 		content="Find recovery and step work passages across the Big Book, 12 Steps, 12 Traditions, and Daily Reflections."
@@ -186,7 +186,7 @@
 	<meta property="og:url" content={canonicalUrl} />
 	<meta property="og:site_name" content="basictexts.org" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="basictexts.org — AA recovery search and step work concordance" />
+	<meta name="twitter:title" content="basictexts.org | AA recovery search and step work concordance" />
 	<meta
 		name="twitter:description"
 		content="Find recovery and step work passages across the Big Book, 12 Steps, 12 Traditions, and Daily Reflections."
