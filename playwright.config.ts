@@ -28,7 +28,9 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	timeout: 60_000,
 	expect: { timeout: 10_000 },
-	reporter: 'list',
+	// List keeps console output; HTML produces `playwright-report/` for the CI
+	// artifact upload. `open: 'never'` avoids launching a browser locally.
+	reporter: [['list'], ['html', { open: 'never' }]],
 	outputDir: 'test-results',
 	use: {
 		baseURL,

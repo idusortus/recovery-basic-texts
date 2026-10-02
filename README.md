@@ -89,6 +89,10 @@ npx playwright install chromium   # one-time: download the test browser
 pnpm run test:e2e                 # Chromium headless; starts a fresh `pnpm run dev`
 ```
 
+This suite also runs in CI on pushes and pull requests that touch app, E2E,
+corpus, or build-tooling files (`.github/workflows/e2e.yml`); a failing test
+fails the check.
+
 Set `PLAYWRIGHT_PORT` to run the dev server and tests on a different port
 (default `5173`). `playwright.config.ts` runs one Chromium project and always
 starts a **fresh** dev server (`reuseExistingServer: false`); because the dev

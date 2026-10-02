@@ -12,6 +12,13 @@
 
 ---
 
+## 2026-10-01 — Adopt Playwright (Chromium, headless) as the browser-verification layer
+
+**Context:** Two shipped UI changes (`search-qol-improvements`, `passage-reader-controls`) plus several earlier ones each carried `manual (browser)` tasks that could not be run because the repo had no headless browser — and this session proved why that gap mattered: the first Playwright run immediately surfaced a PRODUCTION bug (full-text passage pages threw `effect_update_depth_exceeded` in a self-triggering `$effect`, pre-existing since `c43ff54`) that build/`check`/unit tests structurally cannot catch. The host had no Playwright, but pnpm + the npm registry + `~/.cache/ms-playwright` (chromium already cached) and the needed system libs were all present.
+**Choice:** Add `@playwright/test@1.63.0` as a devDependency and an `e2e/` suite (`playwright.config.ts`, `pnpm run test:e2e`) that boots a FRESH Vite dev server on `PLAYWRIGHT_PORT` (default 5173) with `reuseExistingServer: false` and Chromium headless, `workers: 1`. Browser APIs the app depends on (`speechSynthesis`/`SpeechSynthesisUtterance`, `navigator.clipboard`) are mocked via `addInitScript` so tests are deterministic and never pass on the mock alone (assertions check the app actually called `speak`/`pause`/`resume`/`cancel`/`writeText`). "No network" scenarios assert ZERO requests (third-party GA/Fonts noise is blocked from the measured interaction), not a substring denylist. The suite also carries an explicit effect-loop `pageerror` regression guard.
+**Trade-offs:** ~36 tests and a devDependency enter the repo, and `test:e2e` is slow (~1 min) and not wired into CI yet (no workflow). Pixel-level visual/contrast review, real audio output, and OS clipboard integration remain genuinely manual. Mocked `speechSynthesis` also means the browser's own TTS engine is never exercised.
+**Revisit:** If `test:e2e` flakes or the fresh-server model collides with worktree workflows, key the port per-worktree or add a CI job (`playwright install --with-deps chromium` + `build:index`). If visual regressions become the concern, add `toHaveScreenshot` image diffs. If a real-TTS check is ever needed, drive an actual supported browser instead of the mock.
+
 ## 2026-10-01 — `search-qol-improvements` stays entirely in `search-ui`; recent searches are explicit-submit and local-only
 
 **Context:** Four independent search-surface improvements (recent searches, back-to-search scroll restoration, page reference on result cards, truthful Copy label) needed one OpenSpec change. Scroll restoration is a navigation concern, so `app-shell` was a candidate home for it; and recent searches introduce the app's first user-state store, which brushes against the no-accounts guardrail.
