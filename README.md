@@ -63,6 +63,13 @@ pnpm run test:ui-copy      # app-authored visible copy contains no em dash (U+20
 pnpm run test:ingest       # ingest Stage 3 running-header stripping (python3)
 ```
 
+`pnpm run report:jev` prints a usage summary from the Jev tier-router journal
+(`.opencode/journals/jev-tier-router.log`): real System One API calls (prompt
+classifications + spawn-gate evaluations) versus free cached injections, the tier
+and source distributions, and spawn-gate decisions. Accepts an optional path
+argument or `CLI_FIVE_LOGFILE`. Token usage is not journaled by the plugin, so the
+report counts calls only.
+
 `test:search` rebuilds `static/index` first, then imports the real app search
 service (`src/lib/search/index.ts`) through a tiny Node loader
 (`scripts/search-test-loader.mjs`) and exercises both search paths. It also runs

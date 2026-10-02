@@ -27,6 +27,7 @@
     "test:report-prefill": "node scripts/test-report-prefill.mjs",
     "test:reflection": "node scripts/test-reflection.mjs",
     "test:ui-copy": "node scripts/test-ui-copy.mjs",
+    "report:jev": "node scripts/jev-usage.mjs",
     "test:ingest": "python3 corpus/scripts/test-ingest-headers.py",
     "test:search": "node corpus/scripts/build-index.mjs && node scripts/test-search.mjs",
     "test:e2e": "playwright test",
