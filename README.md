@@ -131,9 +131,12 @@ search returns real results.
 
 Daily Reflections is a protected, concordance-only source. Local display never
 reproduces the day's reflection prose in full: the home card and the offline
-`/reflection` fallback show at most a bounded KWIC window (`contextWords` each
-side of the anchor) built from the date's indexed entry via the shared KWIC
-machinery (`src/lib/corpus/reflection.ts`). While online, `/reflection` stays a
+`/reflection` fallback show at most a bounded KWIC window (`contextSentences`
+whole sentences each side of the anchor — DR sets `contextSentences: 1`) built
+from the date's indexed entry via the shared KWIC
+machinery (`src/lib/corpus/reflection.ts`). The reflection's date leads the
+heading on every surface and leads every copied citation (`January 1 · Daily
+Reflections`). While online, `/reflection` stays a
 client-side redirect to `https://www.aa.org/daily-reflections`; while offline it
 renders the indexed entry for the date (or `?date=MM-DD`) instead, and reports
 "No reflection available for [date]" when the local index has no entry. Nothing
@@ -191,7 +194,8 @@ query matches a passage: merged match offsets, the best-match anchor, and the
 shared relevance score. Both paths rank with it, so ordering and highlighting
 agree. `src/lib/search/kwic.ts` clips per display mode (`full-text` = whole
 sentences; `snippet` = at most `contextWords` words total, capped at ~30;
-`concordance-only` = `contextWords` each side) and never renders a protected
+`concordance-only` = `contextSentences` whole sentences each side when set, else
+`contextWords` each side) and never renders a protected
 passage in full. Copying a result copies that same clipped excerpt for protected
 sources (full text only for `full-text`).
 

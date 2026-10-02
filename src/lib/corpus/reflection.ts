@@ -10,7 +10,12 @@
 import { getPassages } from '$lib/search/index';
 import { buildKwicFromOffsets } from '$lib/search/kwic';
 import { getSourceById } from './registry';
+import { formatReflectionDate } from './reflection-date';
 import type { Passage } from '$lib/types';
+
+// Re-exported for backward compatibility; the implementation lives in the
+// dependency-free `reflection-date` module to avoid a search/index import cycle.
+export { formatReflectionDate } from './reflection-date';
 
 const DR_SOURCE_ID = 'daily-reflections';
 
@@ -92,21 +97,20 @@ export function buildReflectionTeaser(text: string): string {
 	const source = getSourceById(DR_SOURCE_ID);
 	const displayMode = source?.displayMode ?? 'concordance-only';
 	const contextWords = source?.contextWords ?? 8;
+	const contextSentences = source?.contextSentences ?? null;
 	const range = firstTermRange(text);
 	const offsets: Array<[number, number]> = range ? [range] : [];
-	const html = buildKwicFromOffsets(text, offsets, displayMode, contextWords, range?.[0]);
+	const html = buildKwicFromOffsets(
+		text,
+		offsets,
+		displayMode,
+		contextWords,
+		range?.[0],
+		contextSentences
+	);
 
 	// The result is discarded when the clipped window still covers every word.
 	return teaserWords(html).length < words.length ? html : '';
-}
-
-/**
- * Formats a MM-DD date string for display (e.g. "06-28" → "June 28").
- */
-export function formatReflectionDate(mmDd: string): string {
-	const [mm, dd] = mmDd.split('-').map(Number);
-	const d = new Date(2000, mm - 1, dd);
-	return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
 /** Offline fallback state for a date's reflection. */

@@ -71,6 +71,8 @@ for (const [i, source] of registry.entries()) {
 		fail(`${prefix}.copyright must be one of: ${[...VALID_COPYRIGHT].join(', ')}`);
 	if (typeof source.contextWords !== 'number')
 		fail(`${prefix}.contextWords must be a number`);
+	if (source.contextSentences != null && typeof source.contextSentences !== 'number')
+		fail(`${prefix}.contextSentences must be a number when present`);
 	if (typeof source.sortOrder !== 'number') fail(`${prefix}.sortOrder must be a number`);
 	if (typeof source.enabled !== 'boolean') fail(`${prefix}.enabled must be a boolean`);
 

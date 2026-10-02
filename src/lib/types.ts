@@ -21,6 +21,12 @@ export interface Source {
 	displayMode: DisplayMode;
 	/** Words each side for KWIC — ignored for full-text. */
 	contextWords: number;
+	/**
+	 * Whole sentences each side for a `concordance-only` KWIC window. When set
+	 * (> 0) it overrides `contextWords` for that source; absent/null keeps the
+	 * word-bounded fallback. Ignored for `full-text` and `snippet`.
+	 */
+	contextSentences?: number | null;
 	/** URL template with {{variables}} for external links. */
 	linkTemplate: string | null;
 	officialUrl: string | null;

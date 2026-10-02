@@ -8,7 +8,8 @@
  * Clipping honors the source's display mode:
  *   - `full-text`        whole sentences around the match
  *   - `snippet`          at most `contextWords` words total (<= ~30-word cap)
- *   - `concordance-only` `contextWords` words on each side of the match
+ *   - `concordance-only` `contextSentences` whole sentences on each side of the
+ *                        match when set, else `contextWords` words on each side
  * Protected sources are never rendered in full.
  *
  * Security: text is HTML-escaped before inserting <mark> tags to prevent XSS.
@@ -288,6 +289,33 @@ function eachSideWindow(
 	return { start: words[from].start, end: words[to].end };
 }
 
+/**
+ * `concordance-only` with a `contextSentences` bound: whole sentences from
+ * `max(0, idx - n)` to `min(last, idx + n)` around the sentence containing the
+ * anchor. With no sentences (empty text) the whole text is returned and the
+ * protected-clip guard trims it.
+ */
+function concordanceSentenceWindow(
+	text: string,
+	anchor: number,
+	contextSentences: number
+): ClipWindow {
+	const sentences = splitSentenceRanges(text);
+	if (sentences.length === 0) return { start: 0, end: text.length };
+	const index = sentenceIndexAt(sentences, anchor);
+	const from = Math.max(0, index - contextSentences);
+	const to = Math.min(sentences.length - 1, index + contextSentences);
+	return { start: sentences[from].start, end: sentences[to].end };
+}
+
+/** First `count` sentences of the text (head-clip fallback). */
+function headSentenceWindow(text: string, count: number): ClipWindow {
+	const sentences = splitSentenceRanges(text);
+	if (sentences.length === 0) return { start: 0, end: text.length };
+	const last = Math.min(sentences.length - 1, Math.max(0, count - 1));
+	return { start: sentences[0].start, end: sentences[last].end };
+}
+
 /** `snippet`: at most `limit` words total, sentence-aligned when that fits. */
 function snippetWindow(
 	text: string,
@@ -363,20 +391,42 @@ function renderWindow(text: string, offsets: Array<[number, number]>, window: Cl
 
 /**
  * Never render the full text of a protected (`snippet`/`concordance-only`)
- * passage: if the window would cover every word, drop one word from the side
+ * passage: if the window would cover every word, drop content from the side
  * away from the match and mark that side clipped.
+ *
+ * For a `concordance-only` source with a sentence bound, a whole-sentence drop
+ * is used (so short entries show the matched sentence with an ellipsis). A
+ * single-sentence entry cannot drop a sentence, so it falls back to the
+ * existing word-drop. Non-sentence modes keep the word-drop.
  */
 function enforceProtectedClip(
 	text: string,
 	window: ClipWindow,
 	anchor: number,
-	displayMode: DisplayMode
+	displayMode: DisplayMode,
+	contextSentences?: number | null
 ): ClipWindow {
 	if (displayMode === 'full-text') return window;
 	if (window.start > 0 || window.end < text.length) return window;
 
+	if (displayMode === 'concordance-only' && contextSentences && contextSentences > 0) {
+		const sentences = splitSentenceRanges(text);
+		if (sentences.length > 1) {
+			const index = sentenceIndexAt(sentences, anchor);
+			// Drop the side away from the anchor. When the anchor sits in the
+			// first sentence, drop the last; otherwise drop the first.
+			if (index === 0) {
+				return { start: sentences[0].start, end: sentences[sentences.length - 2].end };
+			}
+			return { start: sentences[1].start, end: sentences[sentences.length - 1].end };
+		}
+		// Single-sentence entry: fall through to the word-drop below.
+	}
+
 	const words = wordRanges(text);
-	if (words.length <= 1) return window;
+	// A single-word protected passage cannot be clipped by dropping a word, so
+	// return an empty, neutral window rather than the whole (protected) text.
+	if (words.length <= 1) return { start: 0, end: 0 };
 
 	const anchorWord = wordIndexAt(words, anchor);
 	if (anchorWord > 0) {
@@ -398,13 +448,23 @@ function resolveWindow(
 	offsets: Array<[number, number]>,
 	displayMode: DisplayMode,
 	contextWords: number,
-	anchorOffset?: number
+	anchorOffset?: number,
+	contextSentences?: number | null
 ): ResolvedWindow {
+	const sentenceBound =
+		displayMode === 'concordance-only' && contextSentences && contextSentences > 0
+			? contextSentences
+			: null;
+
 	if (offsets.length === 0) {
 		// No matched term to highlight. Never fall back to full text for
 		// protected sources — clip to the head of the passage instead.
 		if (displayMode === 'full-text') {
 			return { offsets: [], window: { start: 0, end: text.length } };
+		}
+		if (sentenceBound) {
+			const head = headSentenceWindow(text, sentenceBound * 2);
+			return { offsets: [], window: enforceProtectedClip(text, head, 0, displayMode, sentenceBound) };
 		}
 		const words = wordRanges(text);
 		if (words.length === 0) return { offsets: [], window: { start: 0, end: 0 } };
@@ -414,7 +474,7 @@ function resolveWindow(
 				: (contextWords || 8) * 2;
 		const last = Math.min(words.length - 1, limit - 1);
 		const head = { start: words[0].start, end: words[last].end };
-		return { offsets: [], window: enforceProtectedClip(text, head, 0, displayMode) };
+		return { offsets: [], window: enforceProtectedClip(text, head, 0, displayMode, sentenceBound) };
 	}
 
 	const merged = mergeOffsets([...offsets].sort((a, b) => a[0] - b[0]));
@@ -422,7 +482,9 @@ function resolveWindow(
 
 	let window: ClipWindow;
 	if (displayMode === 'concordance-only') {
-		window = eachSideWindow(text, wordRanges(text), merged, anchor, contextWords || 8);
+		window = sentenceBound
+			? concordanceSentenceWindow(text, anchor, sentenceBound)
+			: eachSideWindow(text, wordRanges(text), merged, anchor, contextWords || 8);
 	} else if (displayMode === 'snippet') {
 		const limit = Math.min(contextWords > 0 ? contextWords : MAX_SNIPPET_WORDS, MAX_SNIPPET_WORDS);
 		window = snippetWindow(text, wordRanges(text), splitSentenceRanges(text), anchor, limit);
@@ -430,28 +492,34 @@ function resolveWindow(
 		window = fullTextWindow(text, anchor);
 	}
 
-	return { offsets: merged, window: enforceProtectedClip(text, window, anchor, displayMode) };
+	return {
+		offsets: merged,
+		window: enforceProtectedClip(text, window, anchor, displayMode, sentenceBound)
+	};
 }
 
 /**
  * Build a KWIC snippet from exact character offsets.
  *
  * `anchorOffset` centers the window on the best-ranked match (Area 6); it
- * defaults to the first offset. Clipping follows `displayMode`/`contextWords`.
+ * defaults to the first offset. Clipping follows `displayMode`/`contextWords`,
+ * or `contextSentences` for a `concordance-only` source that sets it.
  */
 export function buildKwicFromOffsets(
 	text: string,
 	offsets: Array<[number, number]>,
 	displayMode: DisplayMode,
 	contextWords: number,
-	anchorOffset?: number
+	anchorOffset?: number,
+	contextSentences?: number | null
 ): string {
 	const { offsets: merged, window } = resolveWindow(
 		text,
 		offsets,
 		displayMode,
 		contextWords,
-		anchorOffset
+		anchorOffset,
+		contextSentences
 	);
 	return renderWindow(text, merged, window);
 }
@@ -466,12 +534,20 @@ export function buildExcerpt(
 	offsets: Array<[number, number]>,
 	displayMode: DisplayMode,
 	contextWords: number,
-	anchorOffset?: number
+	anchorOffset?: number,
+	contextSentences?: number | null
 ): string {
 	// Full-text sources copy the whole passage (unchanged behavior).
 	if (displayMode === 'full-text') return text;
 
-	const { window } = resolveWindow(text, offsets, displayMode, contextWords, anchorOffset);
+	const { window } = resolveWindow(
+		text,
+		offsets,
+		displayMode,
+		contextWords,
+		anchorOffset,
+		contextSentences
+	);
 	const prefix = window.start > 0 ? '\u2026 ' : '';
 	const suffix = window.end < text.length ? ' \u2026' : '';
 	return prefix + text.slice(window.start, window.end) + suffix;
@@ -516,14 +592,21 @@ export function buildFullKwic(text: string, query: string): string {
 
 /**
  * Build a plain-text citation string for clipboard copy.
- * Format: "Text excerpt\n\nFrom Source Title, Chapter (p.X)"
+ *
+ * Default format: "Text excerpt\n\nFrom Source Title, Chapter (p.X)".
+ *
+ * When `date` is provided it leads the attribution as `<date> · <source>`
+ * (used by Daily Reflections, whose date is its primary lookup reference).
  */
 export function buildCitation(
 	text: string,
 	sourceTitle: string,
 	chapterRef: string | null,
-	pageRef: string | null
+	pageRef: string | null,
+	date?: string | null
 ): string {
+	if (date) return `${text}\n\n${date} · ${sourceTitle}`;
+
 	const parts: string[] = [sourceTitle];
 	if (chapterRef) parts.push(chapterRef);
 	if (pageRef) parts.push(`p.${pageRef.replace(/^p\.?/, '')}`);

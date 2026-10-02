@@ -10,8 +10,8 @@
  * reflection helpers and load the local index.
  *
  * Covers the `daily-reflections-display` spec:
- *   - the KWIC teaser is a bounded window (at most `contextWords` words each
- *     side of the anchor) derived from the source registry
+ *   - the KWIC teaser is a bounded window (at most `contextSentences` whole
+ *     sentences each side of the anchor) derived from the source registry
  *   - the entry's full `text` is never returned, even for a short entry
  *   - `getReflectionForDate` resolves an explicit MM-DD and is null when absent
  *   - the no-entry fallback carries no reflection text
@@ -64,6 +64,7 @@ const {
 	formatReflectionDate,
 	todayReflectionKey
 } = await import('../src/lib/corpus/reflection.ts');
+const { splitSentences, buildKwicFromOffsets } = await import('../src/lib/search/kwic.ts');
 
 await loadSearchIndex();
 
@@ -95,9 +96,6 @@ function decodeHtml(html) {
 		.replace(/&#39;/g, "'");
 }
 
-const FIRST_MARK_RE =
-	/<mark>(?:<span class="sr-only">highlighted: <\/span>)?([\s\S]*?)<\/mark>/;
-
 /** KWIC with tags and the clipping ellipses removed. */
 function plainOf(html) {
 	const withoutMarks = html
@@ -112,15 +110,6 @@ function wordsIn(text) {
 	return text.split(/\s+/).filter(Boolean);
 }
 
-/** Words before and after the first highlighted match in a KWIC. */
-function countsAroundFirstMark(html) {
-	const match = html.match(FIRST_MARK_RE);
-	if (!match) return { before: 0, after: 0 };
-	const before = wordsIn(plainOf(html.slice(0, match.index))).length;
-	const after = wordsIn(plainOf(html.slice(match.index + match[0].length))).length;
-	return { before, after };
-}
-
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 console.log('reflection: bounded KWIC teaser (DR display mode from registry)');
@@ -128,28 +117,50 @@ console.log('reflection: bounded KWIC teaser (DR display mode from registry)');
 const drSource = getSourceById('daily-reflections');
 assert.ok(drSource, 'daily-reflections is in the source registry');
 
-await test('registry drives the bound (concordance-only, contextWords)', () => {
+await test('registry drives the bound (concordance-only, contextSentences)', () => {
 	assert.equal(drSource.displayMode, 'concordance-only');
-	assert.ok(drSource.contextWords > 0);
+	assert.equal(drSource.contextSentences, 1, 'DR sets a 1-sentence context bound');
+	assert.ok(drSource.contextWords > 0, 'word fallback remains configured');
 });
 
-await test('the rendered teaser is a bounded window, at most contextWords each side', () => {
+await test('a concordance-only sentence window shows contextSentences each side', () => {
+	const text =
+		'One alpha here. Two bravo there. Three charlie everywhere. Four delta now. Five echo end.';
+	const anchor = text.indexOf('charlie');
+	const sentences = splitSentences(text);
+	const expected = [sentences[1], sentences[2], sentences[3]].join(' ');
+	const html = buildKwicFromOffsets(
+		text,
+		[[anchor, anchor + 'charlie'.length]],
+		'concordance-only',
+		8,
+		anchor,
+		drSource.contextSentences
+	);
+	assert.equal(plainOf(html), expected, 'matched sentence plus one sentence each side');
+	assert.ok(html.includes('\u2026'), 'clipped sides are marked');
+	assert.ok(plainOf(html).length < text.length, 'window is a strict subset');
+});
+
+await test('the rendered teaser is a bounded sentence window, never the full text', () => {
 	const entry = getReflectionForDate('06-28');
 	assert.ok(entry, 'June 28 entry present');
 	const html = buildReflectionTeaser(entry.text);
-	const { before, after } = countsAroundFirstMark(html);
+	// The teaser anchors on the entry's first term, so the window is the
+	// matched (first) sentence plus at most contextSentences sentences after it.
+	const fullSentences = splitSentences(entry.text.trim());
+	const windowSentences = splitSentences(plainOf(html));
+	const bound = (drSource.contextSentences ?? 0) + 1;
+	assert.ok(windowSentences.length <= bound, `${windowSentences.length} sentences > bound`);
 	assert.ok(
-		before <= drSource.contextWords,
-		`${before} words before the anchor > ${drSource.contextWords}`
+		windowSentences.every((sentence, i) => fullSentences[i] === sentence),
+		'window runs contiguously from the first sentence'
 	);
+	assert.ok(entry.text.includes(plainOf(html)), 'window is contiguous source text');
 	assert.ok(
-		after <= drSource.contextWords,
-		`${after} words after the anchor > ${drSource.contextWords}`
+		plainOf(html).length < entry.text.trim().length,
+		'window is shorter than the full text'
 	);
-	// The window is a strict subset of the entry text.
-	const window = plainOf(html);
-	assert.ok(entry.text.includes(window), 'window is contiguous source text');
-	assert.ok(window.length < entry.text.trim().length, 'window is shorter than the full text');
 });
 
 await test('the full entry text is never returned for a long entry', () => {
@@ -158,18 +169,30 @@ await test('the full entry text is never returned for a long entry', () => {
 	assert.notEqual(plainOf(html), entry.text.trim(), 'full text rendered');
 	assert.ok(html.includes('\u2026'), 'clipped side is marked with an ellipsis');
 	assert.ok(
-		wordsIn(plainOf(html)).length < wordsIn(entry.text).length,
-		'window has fewer words than the full text'
+		splitSentences(plainOf(html)).length < splitSentences(entry.text.trim()).length,
+		'window has fewer sentences than the full text'
 	);
 });
 
-await test('a short entry is still not reproduced in full', () => {
-	const shortText = 'One two three four five six';
+await test('a short (2-sentence) entry drops a whole sentence', () => {
+	const shortText = 'First sentence is here. Second sentence is there.';
+	assert.equal(splitSentences(shortText).length, 2, 'fixture has two sentences');
 	const html = buildReflectionTeaser(shortText);
-	assert.notEqual(plainOf(html), shortText, 'short entry rendered in full');
+	const window = plainOf(html);
+	assert.notEqual(window, shortText, 'short entry rendered in full');
 	assert.ok(html.includes('\u2026'), 'short window is clipped');
+	assert.equal(splitSentences(window).length, 1, 'guard dropped a whole sentence');
+});
+
+await test('a single-sentence entry falls back to a word-drop', () => {
+	const oneSentence = 'One two three four five six seven eight nine ten.';
+	assert.equal(splitSentences(oneSentence).length, 1, 'fixture has one sentence');
+	const html = buildReflectionTeaser(oneSentence);
+	const window = plainOf(html);
+	assert.notEqual(window, oneSentence, 'single-sentence entry rendered in full');
+	assert.ok(html.includes('\u2026'), 'single-sentence window is clipped');
 	assert.ok(
-		wordsIn(plainOf(html)).length < wordsIn(shortText).length,
+		wordsIn(window).length < wordsIn(oneSentence).length,
 		'at least one word is excluded'
 	);
 });

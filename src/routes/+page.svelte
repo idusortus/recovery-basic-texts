@@ -449,12 +449,16 @@
 
 	/** Accessible name for a result card, announcing position and source. */
 	function resultAriaLabel(
-		source: { shortTitle: string },
+		source: { id: string; shortTitle: string },
 		passage: { chapterRef: string | null; title: string },
 		index: number,
 		total: number
 	): string {
 		const chapter = passage.chapterRef ?? passage.title;
+		// Daily Reflections leads with the date, then the source label.
+		if (source.id === 'daily-reflections') {
+			return `Result ${index + 1} of ${total}: ${chapter}, DR`;
+		}
 		return `Result ${index + 1} of ${total}: ${source.shortTitle}, ${chapter}`;
 	}
 
@@ -856,7 +860,7 @@
 					<h3
 						class="font-serif font-bold text-[#1A1A1A] dark:text-slate-100 text-lg uppercase tracking-wide mb-3"
 					>
-						{todaysReflection.title}
+						{formatReflectionDate(todayMmDd)} · {todaysReflection.title}
 					</h3>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed flex-1 line-clamp-5 mb-4">{@html reflectionTeaserHtml}</p>
@@ -1143,7 +1147,9 @@
 									{/if}
 									<div class="flex items-baseline gap-2 mb-2">
 										<h3 class="font-serif text-xs font-bold text-stone-600 dark:text-slate-300 uppercase tracking-wide">
-											{#if group.source.edition?.edition}
+											{#if group.source.id === 'daily-reflections' && result.passage.chapterRef}
+												{result.passage.chapterRef.toUpperCase()} · {group.source.title.toUpperCase()}
+											{:else if group.source.edition?.edition}
 												{group.source.shortTitle}, {group.source.edition.edition.toUpperCase()} ED.
 												{#if result.passage.chapterRef}
 													· {result.passage.chapterRef.toUpperCase()}

@@ -51,6 +51,10 @@ function validateSource(raw: unknown, index: number): Source {
 		copyright: copyright as CopyrightStatus,
 		displayMode: displayMode as DisplayMode,
 		contextWords: require<number>('contextWords', 'number'),
+		contextSentences:
+			r['contextSentences'] === undefined || r['contextSentences'] === null
+				? null
+				: require<number>('contextSentences', 'number'),
 		linkTemplate: (r['linkTemplate'] as string | null) ?? null,
 		officialUrl: (r['officialUrl'] as string | null) ?? null,
 		freeUrl: (r['freeUrl'] as string | null) ?? null,

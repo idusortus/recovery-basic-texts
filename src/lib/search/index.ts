@@ -24,6 +24,7 @@ import type {
 	ConcordanceIndex
 } from '$lib/types';
 import { enabledSources, getSourceById } from '$lib/corpus/registry';
+import { formatReflectionDate } from '$lib/corpus/reflection-date';
 import { buildCitation, buildKwicFromOffsets, buildFullKwic, buildExcerpt } from './kwic';
 import { tokenize, processTerm, normalizeString } from './normalize.js';
 import {
@@ -483,14 +484,24 @@ function _rankAndGroup(
 			? analyzePassage(passage.text, phraseTokens, keywords, candidate.highlightTerms)
 			: match;
 		const kwic = buildKwicFromOffsets(
-			passage.text, highlight.offsets, source.displayMode, source.contextWords, highlight.anchor
+			passage.text, highlight.offsets, source.displayMode, source.contextWords,
+			highlight.anchor, source.contextSentences
 		);
 		// The copy citation must never contain a protected passage's full text:
 		// full-text sources get the whole text, others get the displayed excerpt.
 		const excerpt = buildExcerpt(
-			passage.text, highlight.offsets, source.displayMode, source.contextWords, highlight.anchor
+			passage.text, highlight.offsets, source.displayMode, source.contextWords,
+			highlight.anchor, source.contextSentences
 		);
-		const citation = buildCitation(excerpt, source.title, passage.chapterRef, passage.pageRef);
+		// Daily Reflections leads with its date rather than its chapterRef.
+		const isDailyReflection = source.id === 'daily-reflections' && passage.date;
+		const citation = buildCitation(
+			excerpt,
+			source.title,
+			isDailyReflection ? null : passage.chapterRef,
+			passage.pageRef,
+			isDailyReflection ? formatReflectionDate(passage.date as string) : null
+		);
 		const result: SearchResult = {
 			passage, source, kwic, citation,
 			matchedBySynonym: candidate.matchedBySynonym,

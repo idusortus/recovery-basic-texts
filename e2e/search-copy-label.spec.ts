@@ -86,7 +86,63 @@ test.describe('Result-card Copy label', () => {
 
 		const copied = await readClipboard(page);
 		expect(copied.length).toBeGreaterThan(0);
-		// A protected excerpt is bounded; a full DR passage is hundreds of words.
-		expect(copied.split(/\s+/).length).toBeLessThan(120);
+
+		// A protected excerpt is a bounded, clipped window: it is a strict subset
+		// of the full entry (never the reflective prose in full), marks the
+		// clipped side with an ellipsis, and leads with the date-led attribution.
+		expect(copied).toContain('\u2026');
+		expect(copied).toMatch(/\n\n[A-Z][a-z]+ \d{1,2} · Daily Reflections\s*$/);
+
+		// Compare the excerpt against the full entry text, read from the page's own
+		// index (not a hard-coded fixture bound): the excerpt must be shorter than
+		// the entry and must not reproduce it. This stays correct for every DR
+		// result regardless of entry length.
+		const heading = article.locator('h3');
+		const headingText = (await heading.textContent())?.trim() ?? '';
+		const excerpt = copied.split('\n\n')[0];
+		const words = (s: string): number => s.split(/\s+/).filter(Boolean).length;
+		const stats = await page.evaluate(async (headingText) => {
+			const res = await fetch('/index/passages.json');
+			const passages = (await res.json()) as Record<string, { text: string; date?: string | null }>;
+			// The heading is "<MONTH DAY> · DAILY REFLECTIONS"; derive the MM-DD date.
+			const match = /^([A-Z]+) (\d{1,2}) ·/.exec(headingText.toUpperCase());
+			if (!match) return null;
+			const months = [
+				'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+				'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+			];
+			const month = months.indexOf(match[1]) + 1;
+			if (month === 0) return null;
+			const date = `${String(month).padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+			const entry = Object.values(passages).find(
+				(p) => p.date === date && typeof p.text === 'string'
+			);
+			return entry ? entry.text : null;
+		}, headingText);
+		expect(stats).not.toBeNull();
+		const fullText = stats as string;
+		// The excerpt marks clipped sides with an ellipsis; strip those markers
+		// (and normalize whitespace) so the remainder is a verbatim run of the
+		// entry's text. No hard-coded length bound: correctness is structural.
+		const normalize = (s: string): string =>
+			s.replace(/\u2026/g, ' ').replace(/\s+/g, ' ').trim();
+		const excerptCore = normalize(excerpt);
+		expect(excerpt).not.toBe(fullText);
+		expect(normalize(fullText).includes(excerptCore)).toBe(true);
+		expect(words(excerpt)).toBeLessThan(words(fullText));
+	});
+
+	test('a Daily Reflections result card leads with the date', async ({ page }) => {
+		await submitSearch(page, ALL_SOURCES_QUERY);
+		await waitForResults(page);
+
+		const article = page
+			.locator('section[aria-label*="Daily Reflections"] article')
+			.first();
+		const heading = article.locator('h3');
+		// The heading is date-led: "JANUARY 1 · DAILY REFLECTIONS", one line.
+		await expect(heading).toHaveText(/^[A-Z]+ \d{1,2} · DAILY REFLECTIONS$/);
+		// The accessible name still contains both the date and the DR label.
+		await expect(article).toHaveAttribute('aria-label', /DR/);
 	});
 });

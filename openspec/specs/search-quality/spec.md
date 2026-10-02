@@ -75,7 +75,8 @@ terms, SHALL tokenize text and split it into sentences without breaking at known
 numbered lists, or page headers, and SHALL produce KWIC snippets whose highlighted spans cover
 exactly the matched occurrences within the shown window. The snippet window SHALL respect the
 source's display mode and its excerpt-size limit: `full-text` shows whole-sentence context,
-while `snippet` and `concordance-only` are word-bounded (see the display-mode scenarios below).
+`snippet` is word-bounded, and `concordance-only` is sentence-bounded when the source sets
+`contextSentences` and word-bounded otherwise (see the display-mode scenarios below).
 
 #### Scenario: A quoted phrase matches only adjacent words
 
@@ -110,7 +111,12 @@ while `snippet` and `concordance-only` are word-bounded (see the display-mode sc
 #### Scenario: Concordance-only snippets are clipped on each side
 
 - **WHEN** the source's display mode is `concordance-only`
-- **THEN** the KWIC window is clipped to at most the source's `contextWords` on each side of the match and never renders the full passage text
+- **THEN** the KWIC window is clipped to at most the source's `contextSentences` whole sentences on each side of the matched sentence when the source sets `contextSentences`, or to at most the source's `contextWords` on each side of the match otherwise, and never renders the full passage text
+
+#### Scenario: A sentence window never reproduces a short protected passage
+
+- **WHEN** a `concordance-only` source with `contextSentences` set is short enough that the sentence window would cover its entire text
+- **THEN** the window drops a whole sentence on the side away from the match (or a word when the passage has only one sentence) and marks that side clipped, so the full text is never rendered
 
 #### Scenario: Both search paths highlight identically
 

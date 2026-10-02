@@ -79,7 +79,7 @@ Secondary: Sponsors, group study facilitators, and anyone interested in recovery
   - Source label + chapter/section/date
   - KWIC display: full sentence or paragraph context with keyword(s) **highlighted**
   - For `full-text` sources: full sentence/paragraph shown
-  - For `concordance-only` sources: ~8 words each side + "Read at [source] →" link
+  - For `concordance-only` sources: bounded context — `contextSentences` whole sentences each side when the source sets it (Daily Reflections = 1 sentence each side), else `contextWords` words each side — + "Read at [source] →" link; for Daily Reflections the date leads the result header and any copied citation
   - Copy button (copies passage text + citation to clipboard)
   - Share button (Web Share API / clipboard)
 - Result count per source shown in group header
@@ -189,7 +189,8 @@ The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sour
   "description": "string — one sentence shown on /sources page",
   "copyright": "public-domain | protected | unknown",
   "displayMode": "full-text | concordance-only | snippet",
-  "contextWords": "number — words each side for KWIC (ignored for full-text)",
+  "contextWords": "number — words each side for KWIC (protected sources; ignored for full-text)",
+  "contextSentences": "number | null — whole sentences each side for a concordance-only KWIC window; when set it overrides contextWords for that source",
   "linkTemplate": "string | null — URL template with {{variables}} for external links",
   "officialUrl": "string | null — link to buy or read officially",
   "freeUrl": "string | null — link to free legal version if available",
@@ -203,7 +204,7 @@ The file `corpus/CORPUS-GUIDE.md` is the authoritative reference for corpus sour
 | Mode | Behavior |
 |---|---|
 | `full-text` | Full sentence or paragraph shown in result card |
-| `concordance-only` | ~8 words each side of keyword + mandatory external link button; full text never rendered |
+| `concordance-only` | Bounded KWIC window: `contextSentences` whole sentences each side when set (Daily Reflections = 1), else ~8 words each side; mandatory external link button; full text never rendered |
 | `snippet` | Short excerpt (fair use, ~30 words max) + external link |
 
 ### 6.4 v1 Source Registry
@@ -376,7 +377,7 @@ All rendering is client-side. The `displayMode` field is the copyright gate at t
 |---|---|---|
 | `full-text` | Full passage with `<mark>` highlights | Full text + citation |
 | `snippet` | Text clipped to `contextWords` each side + `...`, with `<mark>` highlights + external link | Clipped snippet + citation only |
-| `concordance-only` | Text clipped to `contextWords` each side + `...`, with `<mark>` highlights + **mandatory** external link | Clipped snippet + citation only |
+| `concordance-only` | Bounded window (`contextSentences` whole sentences each side when set, else `contextWords` words each side) + `...`, with `<mark>` highlights + **mandatory** external link | Clipped snippet + citation only (Daily Reflections leads with its date) |
 
 **Copyright posture (client-side reality):** With no server, the protected text necessarily ships inside the cached index for offline search. The guarantee we enforce is that protected sources are **never rendered or copied in full** — only the KWIC window is ever shown or placed on the clipboard, and a prominent link drives the user to the official source. Every code path that touches passage text must branch on `displayMode`. This mirrors how other concordances surface protected works.
 
@@ -385,7 +386,7 @@ All rendering is client-side. The `displayMode` field is the copyright gate at t
 - `<input type="date">` for direct date selection; date kept in `?date=MM-DD` URL param
 - If no corpus entry for a date: show "No reflection available for [date]" — do not substitute another date's content
 - External link to `https://www.aa.org/daily-reflections` is always visible and prominent (today's reflection only — no date-specific deep link exists)
-- Display structure: date label → title → KWIC teaser → external link; never full reflection text
+- Display structure: date label → title → KWIC teaser → external link; never full reflection text. The date leads the heading (ahead of the title) and any copied excerpt.
 
 **Dark mode implementation**
 - Detect via `window.matchMedia('(prefers-color-scheme: dark)')` on first render

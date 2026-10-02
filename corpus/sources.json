@@ -67,6 +67,7 @@
     "copyright": "protected",
     "displayMode": "concordance-only",
     "contextWords": 8,
+    "contextSentences": 1,
     "linkTemplate": "https://www.aa.org/daily-reflections",
     "officialUrl": "https://www.aa.org/daily-reflections",
     "freeUrl": null,

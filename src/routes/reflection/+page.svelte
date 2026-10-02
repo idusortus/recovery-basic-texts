@@ -74,7 +74,7 @@
 				</time>
 			</div>
 			<h2 class="font-serif font-bold text-[#1A1A1A] dark:text-slate-100 text-lg uppercase tracking-wide mb-3">
-				{fallback.reflection.title}
+				{fallback.dateLabel} · {fallback.reflection.title}
 			</h2>
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			<p class="text-stone-600 dark:text-slate-400 text-sm italic leading-relaxed mb-4">{@html fallback.teaser}</p>

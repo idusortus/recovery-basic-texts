@@ -41,7 +41,7 @@ import { tokenizeWithPositions, buildConcordance } from '../corpus/scripts/conco
 register('./search-test-loader.mjs', import.meta.url);
 
 // Loaded after register() so the loader can resolve extensionless/`$lib` imports.
-const { splitSentences, buildKwicFromOffsets, buildExcerpt, buildFullTextHighlight } =
+const { splitSentences, buildKwicFromOffsets, buildExcerpt, buildFullTextHighlight, buildCitation } =
 	await import('../src/lib/search/kwic.ts');
 const { analyzePassage, scoreMatch } = await import('../src/lib/search/match.ts');
 const { createSuggestIndex, suggest, boundedEditDistance, applySuggestion, moveActiveIndex } =
@@ -437,22 +437,59 @@ await test('snippet KWIC is at most contextWords words in total', () => {
 	}
 });
 
-await test('concordance-only KWIC is clipped to contextWords on each side', () => {
+await test('concordance-only KWIC is clipped to contextSentences on each side when set', () => {
 	const results = resultsOf(concordancePath.search('gratitude')).filter(
-		(r) => r.source.displayMode === 'concordance-only'
+		(r) => r.source.displayMode === 'concordance-only' && r.source.contextSentences
 	);
-	assert.ok(results.length > 0, 'has concordance-only results');
+	assert.ok(results.length > 0, 'has sentence-bounded concordance-only results');
 	for (const result of results) {
-		const { before, after } = countsAroundFirstMark(result.kwic);
+		const shown = plainOf(result.kwic);
+		const matched = splitSentences(result.passage.text).filter((s) => shown.includes(s));
+		// At most contextSentences sentences each side of the matched sentence.
 		assert.ok(
-			before <= result.source.contextWords + 1,
-			`${result.passage.id}: ${before} words before match`
+			matched.length <= 2 * (result.source.contextSentences ?? 0) + 1,
+			`${result.passage.id}: ${matched.length} sentences shown`
+		);
+		// The window is a strict subset of the entry, with a clipped side marked.
+		assert.ok(
+			result.passage.text.includes(shown),
+			`${result.passage.id}: window is contiguous source text`
 		);
 		assert.ok(
-			after <= result.source.contextWords + 1,
-			`${result.passage.id}: ${after} words after match`
+			shown.length < result.passage.text.trim().length,
+			`${result.passage.id}: window reproduces the full text`
 		);
+		assert.ok(result.kwic.includes('\u2026'), `${result.passage.id}: clipped side is marked`);
 	}
+});
+
+await test('concordance-only without contextSentences stays word-bounded', () => {
+	// Synthetic: the same KWIC engine, no sentence bound — word clipping intact.
+	const text =
+		'Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron.';
+	const start = text.indexOf('theta');
+	const html = buildKwicFromOffsets(text, [[start, start + 5]], 'concordance-only', 2, start);
+	const { before, after } = countsAroundFirstMark(html);
+	assert.ok(before <= 3, 'word-bounded: left side clips to contextWords + the match span');
+	assert.ok(after <= 3, 'word-bounded: right side clips to contextWords');
+	assert.ok(html.includes('\u2026'), 'word-bounded concordance-only is clipped');
+});
+
+await test('a protected short entry never reproduces the full text (synthetic)', () => {
+	const text = 'First sentence here. Second sentence there. Third sentence last.';
+	const start = text.indexOf('Second');
+	const html = buildKwicFromOffsets(
+		text,
+		[[start, start + 'Second'.length]],
+		'concordance-only',
+		8,
+		start,
+		1
+	);
+	const shown = plainOf(html);
+	assert.notEqual(shown, text, 'full synthetic entry rendered');
+	assert.ok(html.includes('\u2026'), 'guard marks the clipped side');
+	assert.ok(splitSentences(shown).length < splitSentences(text).length, 'a sentence was dropped');
 });
 
 await test('protected display modes never render the full passage', () => {
@@ -842,6 +879,31 @@ await test('full-text results keep the full text in their citation', () => {
 	const result = findResult(concordancePath.search('tornado'), TARGET_PASSAGE);
 	assert.ok(result, 'tornado result present');
 	assert.ok(result.citation.includes(result.passage.text));
+});
+
+await test('a Daily Reflections citation leads with the formatted date', () => {
+	const results = resultsOf(concordancePath.search('gratitude')).filter(
+		(r) => r.source.id === 'daily-reflections'
+	);
+	assert.ok(results.length > 0, 'has a Daily Reflections result');
+	for (const result of results) {
+		const date = result.passage.chapterRef;
+		assert.ok(date, 'DR passage carries a chapterRef (human date)');
+		const [excerpt, attribution] = result.citation.split('\n\n');
+		assert.equal(attribution, `${date} · Daily Reflections`, 'citation leads with the date');
+		assert.ok(!attribution.includes('From '), 'citation is not the generic From form');
+		assert.ok(!excerpt.includes(result.passage.text), 'DR citation never contains the full text');
+	}
+});
+
+await test('buildCitation leads with the date when provided, else the From form', () => {
+	const dated = buildCitation('excerpt text', 'Daily Reflections', null, null, 'January 1');
+	assert.equal(dated, 'excerpt text\n\nJanuary 1 · Daily Reflections');
+	const generic = buildCitation('excerpt text', 'Big Book', 'Chapter 5 — How It Works', 'p.58');
+	assert.equal(
+		generic,
+		'excerpt text\n\nFrom Big Book, Chapter 5 — How It Works, p.58'
+	);
 });
 
 await test('buildExcerpt is full for full-text and clipped for protected', () => {
