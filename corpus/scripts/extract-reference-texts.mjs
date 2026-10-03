@@ -8,9 +8,18 @@
  * hand-transcribed copy.
  *
  * Outputs (written only with --write):
- *   corpus/sources/twelve-steps.json        ← unsplit, from p0106 + p0107
+ *   corpus/sources/twelve-steps.json        ← one passage: the clean numbered Twelve Steps
+ *                                             (1-12), derived from p0106 + p0107
  *   corpus/sources/twelve-traditions.json   ← 12 numbered traditions, from p0254-p0258
  *   corpus/sources/promises-and-prayers.json← Promises + Third/Seventh prayers
+ *
+ * twelve-steps is normalized (not emitted byte-for-byte): steps 1-11 are sliced from
+ * p0106 after the lead-in marker and step 12 from p0107 up to its sentence; the two
+ * slices are joined into a run-on numbered string, then split back into twelve steps on
+ * the `N. ` markers, trimmed, and re-joined with single `\n` separators. The corpus text
+ * has no newlines (the steps run together), so those separators are inserted framing that
+ * lets the reader's `whitespace-pre-line` render one step per line. The passage cites the
+ * printed page where the list begins (`pageRef` p.80; step 12's text spills to p.81).
  *
  * The Third Step Prayer begins on p0112 and concludes on p0113 (both printed p.84)
  * because the prayer spans the corpus page break.
@@ -19,7 +28,9 @@
  * Big Book source and prints what it would write. Pass --write to emit files.
  *
  * Fidelity rules enforced here:
- *   - twelve-steps: each derived passage `text` is byte-identical to its source.
+ *   - twelve-steps: each of the twelve step bodies is a contiguous substring of the
+ *     joined p0106+p0107 text (proved by requireSubstring), with only the `N. ` numbering
+ *     and the inserted `\n` separators as framing.
  *   - twelve-traditions: every derived `text` contains the next source passage only
  *     at its start and end (contiguous across the paginated source), and is a
  *     contiguous substring of the concatenation of the source passages.
@@ -66,40 +77,87 @@ function requireSubstring(whole, part, label) {
 }
 
 // ─── twelve-steps ─────────────────────────────────────────────────────────────
-// The Steps list opens on p0106 and spills one step onto p0107. Each corpus
-// passage is already a whole chunk of the Big Book, so the source is "unsplit"
-// and each derived passage must be byte-identical to its source passage.
+// The Steps list opens on p0106 and spills one step onto p0107. Steps 1-11 sit on
+// p0106 after the lead-in marker; step 12 opens p0107. The corpus text has no
+// newlines, so this builder slices out the twelve step statements, verifies each
+// against the source, then splits the run-on numbered string on its `N. ` markers
+// and re-joins with single `\n` separators so the reader draws one step per line.
 
-const STEPS = [
-	{
-		id: 'twelve-steps-list-1-11',
-		title: 'The Twelve Steps',
-		chapterRef: 'The Twelve Steps',
-		sourcePassages: ['big-book-2ed-chapter-5-how-it-works-p0106']
-	},
-	{
-		id: 'twelve-steps-list-12',
-		title: 'The Twelve Steps',
-		chapterRef: 'The Twelve Steps',
-		sourcePassages: ['big-book-2ed-chapter-5-how-it-works-p0107']
-	}
-];
+const STEPS_PAGE_1 = 'big-book-2ed-chapter-5-how-it-works-p0106';
+const STEPS_PAGE_2 = 'big-book-2ed-chapter-5-how-it-works-p0107';
+const STEPS_LEAD_IN = 'Here are the steps we took, which are suggested as a program of recovery:';
+const STEP_12_SENTENCE =
+	'12. Having had a spiritual awakening as the result of these steps, we tried to carry this message to alcoholics, and to practice these principles in all our affairs.';
 
 function buildTwelveSteps() {
-	return STEPS.map((entry, i) => {
-		const source = sourcePassage(entry.sourcePassages[0]);
-		return {
-			id: entry.id,
+	const p0106 = sourcePassage(STEPS_PAGE_1).text;
+	const p0107 = sourcePassage(STEPS_PAGE_2).text;
+
+	// Steps 1-11: everything after the lead-in marker on p0106.
+	const leadInAt = p0106.indexOf(STEPS_LEAD_IN);
+	if (leadInAt < 0) throw new Error(`twelve-steps: lead-in marker not found in ${STEPS_PAGE_1}`);
+	const steps1to11 = p0106.slice(leadInAt + STEPS_LEAD_IN.length).trim();
+
+	// Step 12: p0107's opening prefix, up to and including the step-12 sentence.
+	const step12At = p0107.indexOf(STEP_12_SENTENCE);
+	if (step12At < 0) throw new Error(`twelve-steps: step-12 sentence not found in ${STEPS_PAGE_2}`);
+	const step12 = p0107.slice(0, step12At + STEP_12_SENTENCE.length).trim();
+
+	// Run-on numbered string built from the two slices.
+	const runOn = `${steps1to11} ${step12}`;
+
+	// Split back into the twelve steps on the `N. ` markers. Each marker needs
+	// surrounding whitespace so digits inside a step's own prose are not mistaken
+	// for step numbers; trim drops the leading separator but keeps the `N. ` prefix.
+	const pieces = runOn
+		.split(/(?=\s\d+\.\s)/)
+		.map((piece) => piece.trim())
+		.filter((piece) => piece.length > 0);
+	if (pieces.length !== 12) {
+		throw new Error(`twelve-steps: expected 12 steps, split produced ${pieces.length}`);
+	}
+
+	const text = pieces.join('\n');
+
+	// Fidelity: each step body is a contiguous substring of the joined source text.
+	const whole = `${p0106} ${p0107}`;
+	for (const [i, step] of pieces.entries()) {
+		requireSubstring(whole, step, `twelve-steps step ${i + 1}`);
+	}
+
+	// Normalized invariants the reader's whitespace-pre-line render depends on.
+	const lines = text.split('\n');
+	if (lines.length !== 12) {
+		throw new Error(`twelve-steps: emitted text must have 12 lines, got ${lines.length}`);
+	}
+	if ((text.match(/\n/g) ?? []).length !== 11) {
+		throw new Error('twelve-steps: emitted text must contain exactly 11 newlines');
+	}
+	for (const [i, line] of lines.entries()) {
+		if (!/^\d+\. ./.test(line)) {
+			throw new Error(`twelve-steps: line ${i + 1} must start "N. ": ${line.slice(0, 30)}...`);
+		}
+		if (!line.startsWith(`${i + 1}. `)) {
+			throw new Error(`twelve-steps: line ${i + 1} must be numbered "${i + 1}. "`);
+		}
+	}
+	if (text !== text.trim()) {
+		throw new Error('twelve-steps: emitted text must have no leading/trailing whitespace');
+	}
+
+	return [
+		{
+			id: 'twelve-steps-list-1-12',
 			sourceId: 'twelve-steps',
-			title: entry.title,
-			sequence: i + 1,
+			title: 'The Twelve Steps',
+			sequence: 1,
 			date: null,
-			pageRef: source.pageRef,
-			chapterRef: entry.chapterRef,
-			text: source.text,
+			pageRef: sourcePassage(STEPS_PAGE_1).pageRef,
+			chapterRef: 'The Twelve Steps',
+			text,
 			linkData: null
-		};
-	});
+		}
+	];
 }
 
 // ─── twelve-traditions ────────────────────────────────────────────────────────

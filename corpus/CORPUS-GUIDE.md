@@ -111,10 +111,10 @@ Every passage in `corpus/sources/twelve-traditions.json` is derived, byte-for-by
 **Copyright status:** ✅ Public domain (U.S.) — derived from the public-domain 2nd-edition Big Book (copyright lapsed 1983)
 
 #### Basis
-The Twelve Steps as printed in the 2nd-edition Big Book (*Alcoholics Anonymous*, 1955), in Chapter 5 "How It Works", on pages 80–81 / corpus `pageRef` `p.80`–`p.81` (passages `big-book-2ed-chapter-5-how-it-works-p0106`–`...-p0107`). Same public-domain basis as `big-book-2ed` above (copyright lapsed 1983).
+The Twelve Steps as printed in the 2nd-edition Big Book (*Alcoholics Anonymous*, 1955), in Chapter 5 "How It Works", pages 80–81 / corpus passages `big-book-2ed-chapter-5-how-it-works-p0106`–`...-p0107`. Steps 1–11 are sliced from p0106 after the "Here are the steps we took…" lead-in and step 12 from p0107; the twelve statements are re-joined as a numbered list on `corpus pageRef` `p.80` (the page where the list begins). Same public-domain basis as `big-book-2ed` above (copyright lapsed 1983).
 
 #### Provenance / overlap
-Every passage in `corpus/sources/twelve-steps.json` is derived, byte-for-byte, from the Big Book corpus passages above; the same Twelve Steps text also appears in the `big-book-2ed` source.
+The single passage in `corpus/sources/twelve-steps.json` is derived from the Big Book corpus passages above: each of the twelve step statements is a contiguous slice of that text, with only the `1.`–`12.` list numbering and the inter-step newline separators added as framing so the reader renders one step per line (not a whole-page chunk). The same Twelve Steps text also appears in the `big-book-2ed` source.
 
 ---
 
@@ -407,7 +407,7 @@ The `edition` field is **required** whenever a `<source-id>.pagemap.json` file e
 - 2 — 12&12
 - 3 — Twelve Traditions (long form; public domain, derived from the 2nd-ed. Big Book back matter, `p.189`–`p.192`)
 - 4 — Daily Reflections
-- 5 — Twelve Steps (public domain, derived from the 2nd-ed. Big Book, `p.80`–`p.81`)
+- 5 — Twelve Steps (public domain, derived from the 2nd-ed. Big Book, `p.80`)
 - 6 — Twelve Concepts (registered **disabled**: © 1962 AAWS, no reproduction basis recorded, no `snippet` fallback)
 - 7 — Promises and Prayers (public domain, derived from the 2nd-ed. Big Book)
 - 10+ — future sources (leaves room to insert between existing ones)

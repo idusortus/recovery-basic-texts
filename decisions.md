@@ -12,6 +12,15 @@
 
 ---
 
+## 2026-10-03 — The Twelve Steps reference source must store steps as newline-separated lines, not a space-joined slice
+
+**Context:** Planning review of `restore-twelve-steps-numbered-list`. The plan (`design.md` Decision 1/2) collapses `corpus/sources/twelve-steps.json` to one passage and "joins" the p0106 (steps 1–11) and p0107 (step 12) slices, asserting the result is "newline-separated" and that the reader's `whitespace-pre-line` renders it as a list. This is factually wrong: the Big Book corpus stores each page as a single space-joined run-on line — verified 0 newline characters in p0106, and 0 newlines in every existing reference passage (`twelve-traditions`, `promises-and-prayers`). `whitespace-pre-line` only preserves *existing* newlines, so a raw join renders as one run-on paragraph — the exact user complaint, in a cleaner wrapper.
+**Choice:** The builder (`extract-reference-texts.mjs` `buildTwelveSteps()`) MUST insert line breaks — split the steps-1–11 slice on the ` N. ` markers (N=2..11; step 1 begins the trimmed slice, with no leading ` 1. `) and join steps with `\n` — so the single passage's `text` is newline-separated. Keep the one-passage/one-heading shape (avoids twelve repeated `<h3>`s) and keep `src/` untouched: the existing `whitespace-pre-line` `<p>` then renders the list correctly. The ADDED requirement/scenario must state the newline-separated shape explicitly so it is satisfiable.
+**Trade-offs:** The derived `text` is no longer a byte-for-byte contiguous substring of the Big Book corpus; fidelity is preserved per-step (each step's statement is still verbatim, verified with `requireSubstring`), but the requirement's "each step's wording preserved" must be read per-step, not per-passage. `CORPUS-GUIDE.md` provenance wording should reflect per-step verbatim derivation rather than "byte-for-byte passage".
+**Revisit:** If the reader is ever changed to render structured step data (per-step anchors), the newline-separated-string encoding can be replaced by that structure.
+
+---
+
 ## 2026-10-02 — Correction: the long-form Traditions source must carry all twelve; Tradition 12 was recovered from p0258
 
 **Context:** The prior `add-recovery-reference-texts` decision recorded that the long-form Traditions source ships 11 of 12 traditions because "Tradition 12's sentence is cut off mid-page at the end of `p0257` (it continues on `p0258`)". Review verified that `p0257` ends `"12.--And finally, we of Alcoholics Anonymous believe"` and `p0258` (`p.192`) begins `"that the principle of Anonymity has an immense spiritual significance. … presides over us all."` The two are cleanly contiguous; the full tradition is their concatenation. There is no OCR gap and no truncated sentence. The spec (`reference-texts` spec.md:24) and task 2.2 require all twelve.

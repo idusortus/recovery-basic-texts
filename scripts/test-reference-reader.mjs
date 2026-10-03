@@ -10,9 +10,11 @@
  * shipped corpus data (no external fetch), reads passages only after an
  * enabled/full-text guard, the gated branch returns before touching
  * `getPassages()`, no Twelve Concepts text is reachable, no user-data surface
- * is introduced, and the view key → source id mapping cannot drift.
+ * is introduced, and the view key → source id mapping cannot drift. The
+ * `twelve-steps` corpus is asserted to hold the single clean numbered 1–12 list
+ * (newline-separated step lines derived from the Big Book), not raw page chunks.
  *
- * reference-reader — offline loading, gating, and view mapping.
+ * reference-reader — offline loading, gating, view mapping, and Twelve Steps content.
  */
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -91,6 +93,36 @@ test('a direct visit to each key resolves to its own view', () => {
 	for (const [key, sourceId] of Object.entries(EXPECTED_MAPPING)) {
 		assert.equal(resolveReferenceView(key).sourceId, sourceId);
 	}
+});
+
+// ─── Twelve Steps content: the single clean numbered list ─────────────────────
+
+console.log('reference-reader: twelve-steps content');
+
+test('the twelve-steps corpus holds one clean numbered 1–12 list', () => {
+	const passages = JSON.parse(readFileSync(resolve(root, 'corpus/sources/twelve-steps.json'), 'utf8'));
+	assert.equal(passages.length, 1, 'twelve-steps must hold exactly one passage');
+	const [passage] = passages;
+	assert.equal(passage.sourceId, 'twelve-steps', 'the passage must belong to twelve-steps');
+	assert.equal(passage.sequence, 1, 'the single passage must have sequence 1');
+	const text = passage.text;
+	assert.ok(
+		text.startsWith('1. We admitted we were powerless'),
+		`passage must begin at step 1, got: ${text.slice(0, 40)}...`
+	);
+	assert.ok(
+		text.includes('12. Having had a spiritual awakening'),
+		'passage must include the step-12 statement'
+	);
+	const lines = text.split('\n');
+	assert.equal(lines.length, 12, 'the text must be twelve newline-separated lines');
+	assert.equal((text.match(/\n/g) ?? []).length, 11, 'the text must contain exactly eleven newlines');
+	for (const [i, line] of lines.entries()) {
+		assert.match(line, /^\d+\. /, `line ${i + 1} must start "N. "`);
+		assert.ok(line.startsWith(`${i + 1}. `), `line ${i + 1} must be numbered "${i + 1}. "`);
+	}
+	assert.ok(!text.endsWith('\n'), 'the text must not end with a trailing newline');
+	assert.ok(!text.includes('fling, powerful!'), 'the passage must not carry the page preamble');
 });
 
 // ─── Offline loading: no external fetch ──────────────────────────────────────
