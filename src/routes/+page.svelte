@@ -45,11 +45,23 @@
 
 	// ─── State ──────────────────────────────────────────────────────────────────
 
+	/**
+	 * The single source of truth for the default filter set: every enabled
+	 * source that may appear as a filter chip. `filterable` defaults to true, so
+	 * this equals the enabled set except for sources that opt out (the reference
+	 * texts). ALL default-filter consumers below reference this list, never
+	 * `enabledSources`, so the chip set, the URL default, and the "all selected"
+	 * sentinel cannot diverge.
+	 */
+	const filterableSources = $derived(enabledSources.filter((s) => s.filterable !== false));
+
 	let query = $state('');
 	let debouncedQuery = $state('');
 	let results = $state<GroupedResults[]>([]);
 	let hints = $state<KnownException[]>([]);
-	let activeSourceIds = $state<Set<string>>(new Set(enabledSources.map((s) => s.id)));
+	// The registry is static for the app's lifetime, so the active set is seeded
+	// once from the initial filterable set (untracked: no reactive re-run needed).
+	let activeSourceIds = $state<Set<string>>(new Set(untrack(() => filterableSources.map((s) => s.id))));
 	let phraseMode = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let todaysReflection = $state<Passage | null>(null);
@@ -122,7 +134,10 @@
 		recentSearches = readRecentSearches();
 		const urlState = parseSearchUrl(
 			$page.url.search,
-			enabledSources.map((s) => s.id)
+			// The known/default id list is the filterable set: a hand-authored URL
+			// naming a non-filterable source (e.g. `sources=twelve-steps`) is
+			// intentionally ignored, so the URL default matches the chip default.
+			filterableSources.map((s) => s.id)
 		);
 		phraseMode = urlState.phrase;
 		if (urlState.sources) activeSourceIds = new Set(urlState.sources);
@@ -221,8 +236,8 @@
 
 	/** The active source ids in registry order, or null when all are selected. */
 	function activeSourceList(): string[] | null {
-		if (activeSourceIds.size >= enabledSources.length) return null;
-		return enabledSources.filter((s) => activeSourceIds.has(s.id)).map((s) => s.id);
+		if (activeSourceIds.size >= filterableSources.length) return null;
+		return filterableSources.filter((s) => activeSourceIds.has(s.id)).map((s) => s.id);
 	}
 
 	/** Enqueue the anonymous log record for an explicit submit (Enter / toggle). */
@@ -658,14 +673,14 @@
 	{/if}
 
 	<!-- ── FILTER SOURCES (always) ──────────────────────────────────────────── -->
-	{#if enabledSources.length > 0}
+	{#if filterableSources.length > 0}
 		<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filter by source">
 			<span
 				class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium mr-1 shrink-0"
 			>
 				Filter Sources:
 			</span>
-			{#each enabledSources as source (source.id)}
+			{#each filterableSources as source (source.id)}
 				{@const accent = resolveSourceAccent(source.color)}
 				<button
 					type="button"

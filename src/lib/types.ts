@@ -37,6 +37,12 @@ export interface Source {
 	sortOrder: number;
 	/** false = indexed but not shown (staged rollout). */
 	enabled: boolean;
+	/**
+	 * Controls only whether the source appears as a source-filter chip on the
+	 * search surface; does not affect indexing, display mode, or the /sources
+	 * listing. Absent defaults to `true`.
+	 */
+	filterable?: boolean;
 	/** Edition provenance — required when a pagemap exists for this source. */
 	edition?: SourceEdition | null;
 }

@@ -57,6 +57,7 @@
     "color": "#4A7C6E",
     "sortOrder": 3,
     "enabled": true,
+    "filterable": false,
     "edition": null
   },
   {
@@ -90,6 +91,7 @@
     "color": "#6B4E8C",
     "sortOrder": 5,
     "enabled": true,
+    "filterable": false,
     "edition": null
   },
   {
@@ -106,6 +108,7 @@
     "color": "#B0563A",
     "sortOrder": 6,
     "enabled": false,
+    "filterable": false,
     "edition": null
   },
   {
@@ -122,6 +125,7 @@
     "color": "#2E6F95",
     "sortOrder": 7,
     "enabled": true,
+    "filterable": false,
     "edition": null
   }
 ]

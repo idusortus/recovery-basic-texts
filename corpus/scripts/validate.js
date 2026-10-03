@@ -75,6 +75,11 @@ for (const [i, source] of registry.entries()) {
 		fail(`${prefix}.contextSentences must be a number when present`);
 	if (typeof source.sortOrder !== 'number') fail(`${prefix}.sortOrder must be a number`);
 	if (typeof source.enabled !== 'boolean') fail(`${prefix}.enabled must be a boolean`);
+	if (
+		source.filterable != null &&
+		typeof source.filterable !== 'boolean'
+	)
+		fail(`${prefix}.filterable must be a boolean when present`);
 
 	// Validate edition metadata when present
 	if (source.edition != null) {

@@ -6,6 +6,7 @@
 	import {
 		Search,
 		BookOpen,
+		BookMarked,
 		Tag,
 		Library,
 		Info,
@@ -37,6 +38,7 @@
 			Icon: BookOpen
 		},
 		{ href: '/topics', label: 'Topics', Icon: Tag },
+		{ href: '/reference', label: 'Reference', Icon: BookMarked },
 		{ href: '/sources', label: 'Sources', Icon: Library },
 		{ href: '/about', label: 'About', Icon: Info }
 	];

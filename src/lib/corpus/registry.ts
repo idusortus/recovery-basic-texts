@@ -43,6 +43,15 @@ function validateSource(raw: unknown, index: number): Source {
 		);
 	}
 
+	const rawFilterable = r['filterable'];
+	if (rawFilterable !== undefined && rawFilterable !== null && typeof rawFilterable !== 'boolean') {
+		throw new Error(
+			`sources.json[${index}].filterable: expected boolean when present, got ${typeof rawFilterable}`
+		);
+	}
+	// Absent/null defaults to true so every existing source keeps its chip.
+	const filterable = rawFilterable === undefined || rawFilterable === null ? true : rawFilterable;
+
 	return {
 		id,
 		title: require<string>('title', 'string'),
@@ -60,7 +69,8 @@ function validateSource(raw: unknown, index: number): Source {
 		freeUrl: (r['freeUrl'] as string | null) ?? null,
 		color: require<string>('color', 'string'),
 		sortOrder: require<number>('sortOrder', 'number'),
-		enabled: require<boolean>('enabled', 'boolean')
+		enabled: require<boolean>('enabled', 'boolean'),
+		filterable
 	};
 }
 
