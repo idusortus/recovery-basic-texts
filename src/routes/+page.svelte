@@ -789,11 +789,19 @@
 		</div>
 
 		<!-- ── DASHBOARD GRID ──────────────────────────────────────────────── -->
+		<!--
+			Mobile (single-column) reading order is set with grid `order` on each
+			card below: Today's Reflection (order-1) → Library Status (order-2) →
+			Tools & PWA (order-3). The `md:order-none` reset on all three restores
+			this DOM order (Library Status first) for the multi-column layout.
+			Any card added to this grid MUST set an explicit base order and the
+			`md:` reset, or the 0-default tie-break can misplace it between these.
+		-->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
 			<!-- ─ Library Status ──────────────────────────────────────────────── -->
 			<div
-				class="bg-white dark:bg-slate-900/40 rounded shadow-sm border border-stone-200
-				   dark:border-slate-800 p-4 transition-colors duration-200"
+				class="order-2 md:order-none bg-white dark:bg-slate-900/40 rounded shadow-sm
+				   border border-stone-200 dark:border-slate-800 p-4 transition-colors duration-200"
 			>
 				<h2
 					class="text-xs uppercase tracking-widest text-stone-400 dark:text-slate-500 font-semibold mb-3"
@@ -854,8 +862,8 @@
 
 			<!-- ─ Today's Reflection (2 cols) ────────────────────────────────── -->
 			<div
-				class="md:col-span-1 lg:col-span-2 bg-white dark:bg-slate-900/40 rounded shadow-sm
-				   border border-stone-200 dark:border-slate-800 p-4 flex flex-col
+				class="order-1 md:order-none md:col-span-1 lg:col-span-2 bg-white dark:bg-slate-900/40
+				   rounded shadow-sm border border-stone-200 dark:border-slate-800 p-4 flex flex-col
 				   transition-colors duration-200 min-h-[240px]"
 			>
 				{#if todaysReflection}
@@ -928,8 +936,8 @@
 
 			<!-- ─ Tools & PWA ─────────────────────────────────────────────────── -->
 			<div
-				class="bg-white dark:bg-slate-900/40 rounded shadow-sm border border-stone-200
-				   dark:border-slate-800 p-4 transition-colors duration-200"
+				class="order-3 md:order-none bg-white dark:bg-slate-900/40 rounded shadow-sm
+				   border border-stone-200 dark:border-slate-800 p-4 transition-colors duration-200"
 			>
 				<h2
 					class="text-xs uppercase tracking-widest text-stone-400 dark:text-slate-500 font-semibold mb-3"
