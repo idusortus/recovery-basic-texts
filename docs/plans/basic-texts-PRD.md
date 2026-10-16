@@ -356,7 +356,7 @@ The `proto/google-oneshot` prototype validated the core UI patterns described in
 **Search component (`/` route)**
 - Welcome header (app name, tagline, description) visible only when query is empty; hidden once user types
 - 56px-tall single-line input; search icon on left, clear (×) button on right when query is non-empty
-- Source filter bar always visible below the search input — one toggle button per source with colored dot + `shortTitle`
+- Source filter bar below the search input — always visible at `md` and above, and behind the mobile search-options disclosure below `md` — one toggle button per source with colored dot + `shortTitle`
   - All sources selected by default
   - Prevent deselecting the last remaining source (keep ≥ 1 selected at all times)
 - Quick-access topic chips visible below filter bar only when query is empty; "Browse All A-Z →" link at end of chip row navigates to `/topics`

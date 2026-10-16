@@ -25,8 +25,19 @@ test.describe('Search QoL integration (light/dark + mobile)', () => {
 			await submitSearch(page, 'Fear');
 			await waitForResults(page);
 			await returnHome(page);
+
+			// Below `md` the Recent row sits inside the collapsed search-options
+			// disclosure, so it must be reached by expanding the disclosure first.
+			await page.locator('button[aria-controls="search-more-panel"]').click();
+			await expect(page.locator('#search-more-panel')).toBeVisible();
 			await expect(recentGroup(page)).toBeVisible();
 			await expect(recentEntry(page, 'Fear')).toBeVisible();
+
+			// The expanded disclosure does not overflow the phone width.
+			const expandedOverflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - window.innerWidth
+			);
+			expect(expandedOverflow).toBeLessThanOrEqual(1);
 
 			await submitSearch(page, ALL_SOURCES_QUERY);
 			await waitForResults(page);

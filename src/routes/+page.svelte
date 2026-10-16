@@ -2,7 +2,14 @@
 	import { onMount, onDestroy, untrack, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto, afterNavigate } from '$app/navigation';
-	import { Tag, Info, ChevronRight } from '@lucide/svelte';
+	import {
+		Tag,
+		Info,
+		ChevronRight,
+		SlidersHorizontal,
+		ChevronDown,
+		ChevronUp
+	} from '@lucide/svelte';
 	import {
 		loadSearchIndex,
 		search,
@@ -42,6 +49,7 @@
 	import { enqueueLog, flushLog } from '$lib/log';
 	import { SHORTCUTS } from '$lib/shortcuts';
 	import { reportHref } from '$lib/report-link';
+	import { focusFirstWithin, trapTabKey } from '$lib/focus-trap';
 
 	// ─── State ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +80,41 @@
 	// Persisted in localStorage; never transmitted, logged, or synced. Recorded
 	// only on an explicit submit, never on the debounced as-you-type search.
 	let recentSearches = $state<string[]>([]);
+
+	// ─── Mobile search-options disclosure (below md) ───────────────────────────
+	// One inline panel holds the Recent searches, the Filter Sources + Exact
+	// phrase cluster, and the Popular Recovery Searches cluster. It is collapsed
+	// on every load (the state is never persisted); at md and above the same
+	// panel node stays visible inline and the toggle is hidden.
+	let moreOpen = $state(false);
+	let morePanel = $state<HTMLElement | null>(null);
+	let moreToggle = $state<HTMLButtonElement | null>(null);
+
+	/**
+	 * Filters changed from the default set: every filterable source left out,
+	 * plus one when exact-phrase mode is on. Drives the toggle's count badge and
+	 * the count phrase in its accessible name.
+	 */
+	const changedFilterCount = $derived(
+		Math.max(0, filterableSources.length - activeSourceIds.size) + (phraseMode ? 1 : 0)
+	);
+
+	/** "2 filters changed" (singular at one) for the toggle's accessible name. */
+	function moreCountPhrase(count: number): string {
+		return `${count} filter${count === 1 ? '' : 's'} changed`;
+	}
+
+	/**
+	 * The toggle's accessible name. It always starts with the visible label
+	 * "More" (WCAG 2.5.3 Label in Name), describes the state, and names the
+	 * changed-filter count when there is one.
+	 */
+	const moreToggleLabel = $derived(
+		[
+			moreOpen ? 'More, hide search options' : 'More, show search options',
+			...(changedFilterCount > 0 ? [moreCountPhrase(changedFilterCount)] : [])
+		].join(', ')
+	);
 
 	// ─── Back-to-search scroll restoration ─────────────────────────────────────
 	// SvelteKit restores the history scroll before the async results render and
@@ -412,6 +455,45 @@
 		return activeSourceIds.has(sourceId) && activeSourceIds.size === 1;
 	}
 
+	// ─── Mobile search-options disclosure ──────────────────────────────────────
+
+	async function openMore() {
+		moreOpen = true;
+		await tick();
+		if (morePanel) focusFirstWithin(morePanel);
+	}
+
+	function closeMore() {
+		moreOpen = false;
+		moreToggle?.focus();
+	}
+
+	async function toggleMore() {
+		if (moreOpen) closeMore();
+		else await openMore();
+	}
+
+	function onMoreKeydown(event: KeyboardEvent) {
+		// Only a panel that is actually a disclosure takes over the keyboard:
+		// open, and below the `md` breakpoint where the toggle exists. The media
+		// query mirrors Tailwind's `md` boundary exactly (`min-width: 768px`), so
+		// a fractional viewport width between 767 and 768 px cannot leave the
+		// toggle openable while Escape and Tab containment are inert. At md and
+		// up (including a resize out of the disclosure range while it was open)
+		// the panel renders inline exactly as before, so Tab moves on normally
+		// and the global `/` and `?` shortcuts keep working.
+		if (!moreOpen || window.matchMedia('(min-width: 768px)').matches) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeMore();
+			return;
+		}
+		if (morePanel) trapTabKey(morePanel, event);
+		// The open panel owns the keyboard; don't let the global `/` and `?`
+		// listeners in `+layout.svelte` act (mirrors Nav.svelte).
+		event.stopPropagation();
+	}
+
 	/** Flash an in-place confirmation on one control, then revert. */
 	function confirmInPlace(key: string, label: string) {
 		confirmed = { key, label };
@@ -592,40 +674,218 @@
 		{/if}
 	</div>
 
-	<!-- ── RECENT SEARCHES (home/empty state only, local to this device) ───── -->
-	{#if !debouncedQuery && recentSearches.length > 0}
-		<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Recent searches">
-			<span
-				class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium mr-1 shrink-0"
+	<!-- ── SEARCH-OPTIONS DISCLOSURE (below md) ─────────────────────────────── -->
+	<!--
+		Below `md` the three secondary clusters live behind this one toggle and a
+		single panel; at `md` and up the toggle is hidden and the same panel node
+		renders inline. The panel is collapsed on every load (never persisted).
+	-->
+	{#if filterableSources.length > 0 || !debouncedQuery}
+		<button
+			type="button"
+			bind:this={moreToggle}
+			onclick={toggleMore}
+			aria-expanded={moreOpen}
+			aria-controls="search-more-panel"
+			aria-label={moreToggleLabel}
+			class="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 mb-4 rounded text-sm font-medium
+				   border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900
+				   text-stone-600 dark:text-slate-400 hover:border-navy hover:text-navy
+				   dark:hover:border-amber-400 dark:hover:text-amber-400
+				   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy
+				   dark:focus-visible:ring-amber-400 transition-colors duration-200"
+		>
+			<SlidersHorizontal size={14} aria-hidden="true" />
+			<span>More</span>
+			{#if changedFilterCount > 0}
+				<span
+					aria-hidden="true"
+					class="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold
+						   leading-none bg-navy/10 text-navy dark:bg-amber-400/20 dark:text-amber-400"
+				>{`· ${changedFilterCount}`}</span>
+			{/if}
+			{#if moreOpen}
+				<ChevronUp size={14} aria-hidden="true" />
+			{:else}
+				<ChevronDown size={14} aria-hidden="true" />
+			{/if}
+		</button>
+	{/if}
+
+	<!--
+		The single panel node. It is always in the DOM so the toggle's
+		`aria-controls` target always resolves; collapsed below `md` via `hidden`,
+		always a column at `md` and up. No `{#if}` wraps it, so the controls are
+		never duplicated (there is exactly one `#filter-last-source-note`).
+
+		`role="region"` is a non-interactive role, so the
+		`svelte/a11y_no_noninteractive_element_interactions` warning fires on the
+		keydown handler below. The handler only manages Escape and Tab while the
+		disclosure is open and returns early at `md` and up, so it takes no click
+		target and no better markup fits. Suppressed here with this written
+		rationale, which is this repo's convention.
+	-->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		id="search-more-panel"
+		role="region"
+		aria-label="Search options"
+		bind:this={morePanel}
+		onkeydown={onMoreKeydown}
+		class="{moreOpen ? 'flex' : 'hidden'} flex-col md:flex md:flex-col mb-4"
+	>
+		<!-- Recent searches (home/empty state only, local to this device) -->
+		{#if !debouncedQuery && recentSearches.length > 0}
+			<div
+				class="flex flex-wrap items-center gap-2 mb-4"
+				role="group"
+				aria-label="Recent searches"
 			>
-				Recent:
-			</span>
-			{#each recentSearches as recent (recent)}
+				<span
+					class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium mr-1 shrink-0"
+				>
+					Recent:
+				</span>
+				{#each recentSearches as recent (recent)}
+					<button
+						type="button"
+						onclick={() => runRecentSearch(recent)}
+						aria-label={`Search again for ${recent}`}
+						class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
+							   bg-white dark:bg-slate-900 text-stone-600 dark:text-slate-400
+							   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+							   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400
+							   transition-colors duration-150"
+					>
+						{recent}
+					</button>
+				{/each}
 				<button
 					type="button"
-					onclick={() => runRecentSearch(recent)}
-					aria-label={`Search again for ${recent}`}
-					class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
-						   bg-white dark:bg-slate-900 text-stone-600 dark:text-slate-400
-						   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
-						   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy dark:focus-visible:ring-amber-400
-						   transition-colors duration-150"
+					onclick={clearRecentSearchesRow}
+					aria-label="Clear recent searches"
+					class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300
+						   underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy
+						   dark:focus-visible:ring-amber-400 transition-colors"
 				>
-					{recent}
+					Clear
 				</button>
-			{/each}
-			<button
-				type="button"
-				onclick={clearRecentSearchesRow}
-				aria-label="Clear recent searches"
-				class="text-xs text-stone-400 dark:text-slate-500 hover:text-navy dark:hover:text-slate-300
-					   underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy
-					   dark:focus-visible:ring-amber-400 transition-colors"
-			>
-				Clear
-			</button>
-		</div>
-	{/if}
+			</div>
+		{/if}
+
+		<!-- Filter Sources + Exact phrase (when any source is filterable) -->
+		{#if filterableSources.length > 0}
+			<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filter by source">
+				<span
+					class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium mr-1 shrink-0"
+				>
+					Filter Sources:
+				</span>
+				{#each filterableSources as source (source.id)}
+					{@const accent = resolveSourceAccent(source.color)}
+					<button
+						type="button"
+						onclick={() => toggleSource(source.id)}
+						aria-pressed={activeSourceIds.has(source.id)}
+						aria-disabled={isLastActiveSource(source.id)}
+						aria-describedby={isLastActiveSource(source.id) ? 'filter-last-source-note' : undefined}
+						class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
+							   border transition-colors duration-150
+							   {isLastActiveSource(source.id)
+							? 'border-dashed border-stone-300 dark:border-slate-600 cursor-not-allowed'
+							: activeSourceIds.has(source.id)
+								? 'border-transparent'
+								: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
+						style={activeSourceIds.has(source.id)
+							? `background-color: ${accent.fill}; color: ${accent.onFill};`
+							: ''}
+					>
+						<span
+							class="inline-block w-2 h-2 rounded-full shrink-0"
+							style="background-color: {accent.fill}; box-shadow: 0 0 0 1.5px {activeSourceIds.has(
+								source.id
+							)
+								? accent.ring
+								: CHIP_SURFACE_RING};"
+							aria-hidden="true"
+						></span>
+						{source.shortTitle}
+					</button>
+				{/each}
+				<p id="filter-last-source-note" class="sr-only">
+					The last selected source cannot be deselected. Select another source first.
+				</p>
+				<!-- Exact phrase mode toggle -->
+				<button
+					type="button"
+					onclick={() => {
+						phraseMode = !phraseMode;
+						// Sync debouncedQuery with current input and run immediately
+						if (debounceTimer) {
+							clearTimeout(debounceTimer);
+							debounceTimer = null;
+						}
+						debouncedQuery = query;
+						runSearch(query);
+						hints = findExceptions(query);
+						syncUrl(query);
+						submitLog(query);
+						dismissSuggestions();
+					}}
+					aria-pressed={phraseMode}
+					aria-label={phraseMode
+						? 'Exact phrase mode on. Click to switch to word match'
+						: 'Word match mode. Click to search exact phrase'}
+					class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
+						   border transition-colors duration-150 ml-auto
+						   {phraseMode
+						? 'border-transparent bg-navy text-white dark:bg-amber-400 dark:text-slate-900'
+						: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
+				>
+					Exact phrase
+					<span
+						aria-hidden="true"
+						class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide
+							   {phraseMode
+							? 'bg-white/25 text-white dark:bg-slate-900/25 dark:text-slate-900'
+							: 'bg-stone-100 text-stone-600 dark:bg-slate-800 dark:text-slate-400'}"
+						>{phraseMode ? 'On' : 'Off'}</span
+					>
+				</button>
+			</div>
+		{/if}
+
+		<!-- Popular Recovery Searches (home/empty state only) -->
+		{#if !debouncedQuery}
+			<div class="mb-4">
+				<span
+					class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium block mb-2"
+				>
+					Popular Recovery Searches:
+				</span>
+				<div class="flex flex-wrap gap-2 items-center" role="group" aria-label="Quick topic searches">
+					{#each TOPIC_CHIPS as topic (topic)}
+						<button
+							type="button"
+							onclick={() => searchTopic(topic)}
+							class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
+								   bg-white dark:bg-slate-900 text-stone-600 dark:text-slate-400
+								   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
+								   transition-colors duration-150"
+						>
+							{topic}
+						</button>
+					{/each}
+					<a
+						href="/topics"
+						class="text-sm text-navy dark:text-amber-400 hover:underline transition-colors ml-1"
+					>
+						Browse All A-Z ›
+					</a>
+				</div>
+			</div>
+		{/if}
+	</div>
 
 	<!-- ── SHORTCUT HINT (rendered from the wired registry) ─────────────────── -->
 	<p
@@ -672,122 +932,11 @@
 		</div>
 	{/if}
 
-	<!-- ── FILTER SOURCES (always) ──────────────────────────────────────────── -->
-	{#if filterableSources.length > 0}
-		<div class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Filter by source">
-			<span
-				class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium mr-1 shrink-0"
-			>
-				Filter Sources:
-			</span>
-			{#each filterableSources as source (source.id)}
-				{@const accent = resolveSourceAccent(source.color)}
-				<button
-					type="button"
-					onclick={() => toggleSource(source.id)}
-					aria-pressed={activeSourceIds.has(source.id)}
-					aria-disabled={isLastActiveSource(source.id)}
-					aria-describedby={isLastActiveSource(source.id) ? 'filter-last-source-note' : undefined}
-					class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
-						   border transition-colors duration-150
-						   {isLastActiveSource(source.id)
-						? 'border-dashed border-stone-300 dark:border-slate-600 cursor-not-allowed'
-						: activeSourceIds.has(source.id)
-							? 'border-transparent'
-							: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
-					style={activeSourceIds.has(source.id)
-						? `background-color: ${accent.fill}; color: ${accent.onFill};`
-						: ''}
-				>
-					<span
-						class="inline-block w-2 h-2 rounded-full shrink-0"
-						style="background-color: {accent.fill}; box-shadow: 0 0 0 1.5px {activeSourceIds.has(
-							source.id
-						)
-							? accent.ring
-							: CHIP_SURFACE_RING};"
-						aria-hidden="true"
-					></span>
-					{source.shortTitle}
-				</button>
-			{/each}
-			<p id="filter-last-source-note" class="sr-only">
-				The last selected source cannot be deselected. Select another source first.
-			</p>
-			<!-- Exact phrase mode toggle -->
-			<button
-				type="button"
-				onclick={() => {
-					phraseMode = !phraseMode;
-					// Sync debouncedQuery with current input and run immediately
-					if (debounceTimer) {
-						clearTimeout(debounceTimer);
-						debounceTimer = null;
-					}
-					debouncedQuery = query;
-					runSearch(query);
-					hints = findExceptions(query);
-					syncUrl(query);
-					submitLog(query);
-					dismissSuggestions();
-				}}
-				aria-pressed={phraseMode}
-				aria-label={phraseMode
-					? 'Exact phrase mode on. Click to switch to word match'
-					: 'Word match mode. Click to search exact phrase'}
-				class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm font-medium
-					   border transition-colors duration-150 ml-auto
-					   {phraseMode
-					? 'border-transparent bg-navy text-white dark:bg-amber-400 dark:text-slate-900'
-					: 'border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-stone-500 dark:text-slate-400'}"
-			>
-				Exact phrase
-				<span
-					aria-hidden="true"
-					class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide
-						   {phraseMode
-						? 'bg-white/25 text-white dark:bg-slate-900/25 dark:text-slate-900'
-						: 'bg-stone-100 text-stone-600 dark:bg-slate-800 dark:text-slate-400'}"
-					>{phraseMode ? 'On' : 'Off'}</span
-				>
-			</button>
-		</div>
-	{/if}
-
 	<!-- ── DISPLAY-MODE LEGEND (search surface) ─────────────────────────────── -->
 	<DisplayModeLegend />
 
 	<!-- ── HOME STATE ───────────────────────────────────────────────────────── -->
 	{#if !debouncedQuery}
-		<!-- Popular searches -->
-		<div class="mb-8">
-			<span
-				class="text-xs text-stone-400 dark:text-slate-500 uppercase tracking-wide font-medium block mb-2"
-			>
-				Popular Recovery Searches:
-			</span>
-			<div class="flex flex-wrap gap-2 items-center" role="group" aria-label="Quick topic searches">
-				{#each TOPIC_CHIPS as topic (topic)}
-					<button
-						type="button"
-						onclick={() => searchTopic(topic)}
-						class="px-3 py-1.5 rounded text-sm border border-stone-200 dark:border-slate-700
-							   bg-white dark:bg-slate-900 text-stone-600 dark:text-slate-400
-							   hover:border-navy hover:text-navy dark:hover:border-amber-400 dark:hover:text-amber-400
-							   transition-colors duration-150"
-					>
-						{topic}
-					</button>
-				{/each}
-				<a
-					href="/topics"
-					class="text-sm text-navy dark:text-amber-400 hover:underline transition-colors ml-1"
-				>
-					Browse All A-Z ›
-				</a>
-			</div>
-		</div>
-
 		<!-- ── DASHBOARD GRID ──────────────────────────────────────────────── -->
 		<!--
 			Mobile (single-column) reading order is set with grid `order` on each
